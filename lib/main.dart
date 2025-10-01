@@ -4,7 +4,6 @@ import 'core/app_theme.dart';
 import 'screens/splash_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/sign_in_screen.dart';
-import 'screens/sign_up_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/bookings/bookings_list_screen.dart';
 import 'screens/bookings/booking_detail_screen.dart';
@@ -42,7 +41,6 @@ class FixerApp extends StatelessWidget {
           '/': (context) => const SplashScreen(),
           '/onboarding': (context) => const OnboardingScreen(),
           '/signin': (context) => const SignInScreen(),
-          '/signup': (context) => const SignUpScreen(),
           '/home': (context) => const HomeShell(),
           '/dashboard': (context) => const DashboardScreen(),
           '/bookings': (context) => const BookingsListScreen(),

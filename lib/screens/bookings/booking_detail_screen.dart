@@ -114,6 +114,11 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             .trim();
     final location = (_data['location'] ?? '').toString();
     final status = (_data['status'] ?? '').toString();
+    final contactVisible = (_data['customer_contact_visible'] == true);
+    final contactRaw = customer['contact_number'] ?? customer['phone'] ?? customer['mobile'];
+    final contact = contactVisible && contactRaw != null
+        ? contactRaw.toString()
+        : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -169,6 +174,16 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                         Icons.person,
                         'Customer',
                         custName.isEmpty ? '—' : custName,
+                      ),
+                      const SizedBox(height: 8),
+                      _infoRow(
+                        Icons.phone,
+                        'Contact',
+                        contactVisible
+                            ? (contact == null || contact.trim().isEmpty
+                                ? 'Customer contact not provided'
+                                : contact)
+                            : 'Visible after you accept the request',
                       ),
                       const SizedBox(height: 8),
                       _infoRow(

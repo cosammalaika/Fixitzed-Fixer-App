@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
 import '../services/api_client.dart';
-import 'sign_up_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -152,11 +151,11 @@ class _SignInScreenState extends State<SignInScreen> {
                     decoration: BoxDecoration(color: Colors.grey.shade900),
                   ),
                   Positioned(
-                    top: 12,
+                    top: 70,
                     right: 16,
                     child: Image.asset(
                       'assets/images/logo.png',
-                      height: 150,
+                      height: 50,
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -460,26 +459,6 @@ class _SignInScreenState extends State<SignInScreen> {
                                       'Don’t have an account ? ',
                                       style: GoogleFonts.urbanist(
                                         color: Theme.of(context).hintColor,
-                                      ),
-                                    ),
-                                    GestureDetector(
-                                      onTap: _loading
-                                          ? null
-                                          : () {
-                                              Navigator.pushReplacement(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (_) =>
-                                                      const SignUpScreen(),
-                                                ),
-                                              );
-                                            },
-                                      child: Text(
-                                        'Sign Up',
-                                        style: GoogleFonts.urbanist(
-                                          color: orange,
-                                          fontWeight: FontWeight.w600,
-                                        ),
                                       ),
                                     ),
                                   ],

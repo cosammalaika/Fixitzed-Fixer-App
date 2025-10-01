@@ -36,14 +36,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final mq = MediaQuery.of(context);
     final targetWidthPx = (mq.size.width * mq.devicePixelRatio).round();
     for (var item in onboardingData) {
-      final provider = ResizeImage(AssetImage(item["image"]!), width: targetWidthPx);
+      final provider = ResizeImage(
+        AssetImage(item["image"]!),
+        width: targetWidthPx,
+      );
       precacheImage(provider, context);
     }
   }
 
   void nextPage() {
     if (currentPage < onboardingData.length - 1) {
-      _controller.nextPage(duration: const Duration(milliseconds: 400), curve: Curves.easeInOut);
+      _controller.nextPage(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
     } else {
       Navigator.of(context).pushReplacementNamed('/signin');
     }
@@ -83,9 +89,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       child: Builder(
                         builder: (context) {
                           final mq = MediaQuery.of(context);
-                          final targetWidthPx = (mq.size.width * mq.devicePixelRatio).round();
+                          final targetWidthPx =
+                              (mq.size.width * mq.devicePixelRatio).round();
                           return Image(
-                            image: ResizeImage(AssetImage(item["image"]!), width: targetWidthPx),
+                            image: ResizeImage(
+                              AssetImage(item["image"]!),
+                              width: targetWidthPx,
+                            ),
                             height: mq.size.height * 0.55,
                             width: double.infinity,
                             fit: BoxFit.cover,
@@ -96,11 +106,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ),
                     ),
                     Positioned(
-                      top: 20,
+                      top: 80,
                       right: 20,
                       child: Image.asset(
                         'assets/images/logo.png',
-                        height: 180,
+                        height: 50,
                         fit: BoxFit.contain,
                       ),
                     ),
@@ -117,13 +127,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             Text(
                               item["title"]!,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
+                              style: const TextStyle(
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                             ),
                             const SizedBox(height: 14),
                             Text(
                               item["body"]!,
                               textAlign: TextAlign.center,
-                              style: const TextStyle(fontSize: 16, color: Colors.white),
+                              style: const TextStyle(
+                                fontSize: 16,
+                                color: Colors.white,
+                              ),
                             ),
                           ],
                         ),
@@ -136,11 +153,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 onboardingData.length,
                                 (dotIndex) => AnimatedContainer(
                                   duration: const Duration(milliseconds: 300),
-                                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
                                   width: currentPage == dotIndex ? 20 : 8,
                                   height: 8,
                                   decoration: BoxDecoration(
-                                    color: currentPage == dotIndex ? const Color(0xFFF1592A) : const Color(0xFFDEDEDE),
+                                    color: currentPage == dotIndex
+                                        ? const Color(0xFFF1592A)
+                                        : const Color(0xFFDEDEDE),
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                 ),
@@ -154,12 +175,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFF1592A),
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
                                 ),
                                 child: Text(
-                                  index == onboardingData.length - 1 ? 'Get Started' : 'Next',
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                                  index == onboardingData.length - 1
+                                      ? 'Get Started'
+                                      : 'Next',
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900,
+                                  ),
                                 ),
                               ),
                             ),

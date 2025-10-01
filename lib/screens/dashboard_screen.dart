@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/api_client.dart';
 import '../ui/snack.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import '../services/notifications_service.dart';
 import '../services/fixer_service.dart';
 import '../models/service_request.dart';
@@ -120,12 +121,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           final last = (data['last_name'] ?? data['lastName'] ?? '').toString();
           final n = (data['name'] ?? '').toString();
           name = n.isNotEmpty ? n : ('$first $last').trim();
-          avatarUrl = _resolveImage((data['avatar_url'] ??
-                  data['avatar'] ??
-                  data['profile_photo_url'] ??
-                  data['profile_photo_path'] ??
-                  data['photo'])
-              ?.toString());
+          avatarUrl = _resolveImage(
+            (data['avatar_url'] ??
+                    data['avatar'] ??
+                    data['profile_photo_url'] ??
+                    data['profile_photo_path'] ??
+                    data['photo'])
+                ?.toString(),
+          );
           location = (data['address'] ?? data['location'] ?? '').toString();
         }
       }
@@ -368,7 +371,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         final ok = await _fixer.acceptRequest(r.id);
                         if (!mounted) return;
                         Navigator.of(ctx).pop();
-                        AppSnack.show(context, message: ok ? 'Request accepted' : 'Failed to accept', success: ok);
+                        AppSnack.show(
+                          context,
+                          message: ok ? 'Request accepted' : 'Failed to accept',
+                          success: ok,
+                        );
                         final w = await _fixer.wallet();
                         setState(
                           () => _coins =
@@ -439,142 +446,74 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (snap.connectionState != ConnectionState.done) {
             return const Center(child: CircularProgressIndicator());
           }
-          final d = snap.data ?? _DashboardData.empty();
+          final data = snap.data ?? _DashboardData.empty();
+          final activeCount = data.requests
+              .where((r) => r.status != 'completed' && r.status != 'cancelled')
+              .length;
           return SafeArea(
             child: RefreshIndicator(
               onRefresh: () async => setState(() => _future = _load()),
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // Header row (greeting + avatar + notifications)
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundImage:
-                            (d.avatarUrl != null && d.avatarUrl!.isNotEmpty)
-                            ? (d.avatarUrl!.startsWith('http')
-                                  ? NetworkImage(d.avatarUrl!) as ImageProvider
-                                  : AssetImage(d.avatarUrl!))
-                            : const AssetImage('assets/images/logo-sm.png'),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Hi, ${d.name.isEmpty ? 'there' : d.name}',
-                              style: GoogleFonts.urbanist(fontSize: 16),
-                            ),
-                            Text(
-                              d.location.isEmpty ? 'Welcome' : d.location,
-                              style: GoogleFonts.urbanist(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 18,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Stack(
-                        children: [
-                          GestureDetector(
-                            onTap: () =>
-                                Navigator.pushNamed(context, '/notifications'),
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.surface,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  if (Theme.of(context).brightness ==
-                                      Brightness.light)
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.06),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.notifications_none_rounded,
-                              ),
-                            ),
-                          ),
-                          if (d.notificationsUnread > 0)
-                            Positioned(
-                              right: 6,
-                              top: 6,
-                              child: Container(
-                                width: 10,
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(
-                                    color: Colors.white,
-                                    width: 1.5,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
+                  _HeaderCard(
+                    data: data,
+                    onNotificationsTap: () =>
+                        Navigator.pushNamed(context, '/notifications'),
                   ),
                   const SizedBox(height: 16),
-                  _BalanceCard(coins: d.coins),
-                  const SizedBox(height: 12),
                   _StatRow(
-                    notifications: d.notificationsUnread,
-                    requests: d.requests.length,
-                    completed: d.completedCount,
+                    notifications: data.notificationsUnread,
+                    requests: data.requests.length,
+                    completed: data.completedCount,
                   ),
-                  const SizedBox(height: 12),
-                  Card(
-                    child: ListTile(
-                      title: const Text('Active Bookings'),
-                      subtitle: Text(
-                        '${d.requests.where((r) => r.status != 'completed' && r.status != 'cancelled').length} active',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.pushNamed(context, '/bookings'),
+                  const SizedBox(height: 16),
+                  _ActionCard(
+                    title: 'Active Bookings',
+                    subtitle: activeCount == 0
+                        ? 'No pending jobs right now'
+                        : '$activeCount awaiting your action',
+                    icon: Icons.assignment_turned_in_rounded,
+                    onTap: () => Navigator.pushNamed(context, '/bookings'),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Recent Requests',
+                    style: GoogleFonts.urbanist(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Recent Requests',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 8),
-                  ...d.requests
-                      .take(5)
-                      .map(
-                        (r) => Card(
-                          child: ListTile(
-                            title: Text(r.service.name),
-                            subtitle: Text(
-                              '${r.customer.name} • ${r.status}${r.location != null ? ' • ${r.location}' : ''}',
-                            ),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () => Navigator.pushNamed(
-                              context,
-                              '/booking_detail',
-                              arguments: r.id,
+                  const SizedBox(height: 12),
+                  if (data.requests.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F5F7),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        'No requests yet. Once a customer books you, it will appear here.',
+                        style: GoogleFonts.urbanist(color: Colors.black54),
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  else
+                    ...data.requests
+                        .take(5)
+                        .map(
+                          (r) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _RequestCard(
+                              request: r,
+                              onTap: () => Navigator.pushNamed(
+                                context,
+                                '/booking_detail',
+                                arguments: r.id,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                  if (d.requests.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16.0),
-                      child: Text(
-                        'No requests yet',
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  const SizedBox(height: 32),
                 ],
               ),
             ),
@@ -613,39 +552,6 @@ class _DashboardData {
   );
 }
 
-class _BalanceCard extends StatelessWidget {
-  final int coins;
-  const _BalanceCard({required this.coins});
-  @override
-  Widget build(BuildContext context) {
-    final orange = Theme.of(context).primaryColor;
-    return Container(
-      decoration: BoxDecoration(
-        color: orange,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text(
-            'Subscription Coins Left',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-          ),
-          Text(
-            '$coins',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _StatRow extends StatelessWidget {
   final int notifications;
   final int requests;
@@ -662,12 +568,12 @@ class _StatRow extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.grey.shade100,
+          color: const Color(0xFFF3F5F7),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           children: [
-            Icon(icon, color: Theme.of(context).primaryColor),
+            Icon(icon, color: Color(0xFFF1592A)),
             const SizedBox(height: 6),
             Text('$value', style: const TextStyle(fontWeight: FontWeight.w800)),
             const SizedBox(height: 2),
@@ -683,5 +589,384 @@ class _StatRow extends StatelessWidget {
         box(Icons.check_circle, 'Completed', completed),
       ],
     );
+  }
+}
+
+class _HeaderCard extends StatelessWidget {
+  final _DashboardData data;
+  final VoidCallback onNotificationsTap;
+  const _HeaderCard({required this.data, required this.onNotificationsTap});
+
+  @override
+  Widget build(BuildContext context) {
+    const brand = Color(0xFFF1592A);
+    final avatarProvider =
+        (data.avatarUrl != null && data.avatarUrl!.isNotEmpty)
+        ? NetworkImage(data.avatarUrl!) as ImageProvider
+        : const AssetImage('assets/images/logo-sm.png');
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF1592A), Color(0xFFE45526)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x33593F2B),
+            blurRadius: 18,
+            offset: Offset(0, 12),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: Colors.white,
+                child: CircleAvatar(
+                  radius: 24,
+                  backgroundImage: avatarProvider,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data.name.isEmpty ? 'Hi there,' : 'Hi, ${data.name}',
+                      style: GoogleFonts.urbanist(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      data.location.isEmpty
+                          ? 'Ready to serve today?'
+                          : data.location,
+                      style: GoogleFonts.urbanist(color: Colors.white70),
+                    ),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: onNotificationsTap,
+                child: Stack(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.notifications_none_rounded,
+                        color: Colors.white,
+                      ),
+                    ),
+                    if (data.notificationsUnread > 0)
+                      Positioned(
+                        right: 6,
+                        top: 6,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: const BoxDecoration(
+                    color: Color(0x1AF1592A),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.electric_bolt_rounded, color: brand),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Subscription Coins',
+                        style: GoogleFonts.urbanist(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      Text(
+                        data.coins > 0
+                            ? 'Keep accepting requests to earn more.'
+                            : 'Top up to continue accepting jobs.',
+                        style: GoogleFonts.urbanist(
+                          color: Colors.black54,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '${data.coins}',
+                  style: GoogleFonts.urbanist(
+                    color: brand,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 20,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final VoidCallback onTap;
+  const _ActionCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const brand = Color(0xFFF1592A);
+    return Material(
+      color: const Color(0xFFF8EEE8),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Color(0x1AF1592A),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: brand),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.urbanist(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: GoogleFonts.urbanist(
+                        color: Colors.black54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: Colors.black54),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RequestCard extends StatelessWidget {
+  final ServiceRequest request;
+  final VoidCallback onTap;
+  const _RequestCard({required this.request, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    const brand = Color(0xFFF1592A);
+    final status = request.status;
+    final scheduled = request.scheduledAt != null
+        ? DateFormat('d MMM, h:mm a').format(request.scheduledAt!.toLocal())
+        : 'Schedule pending';
+    final location = request.location?.isNotEmpty == true
+        ? request.location!
+        : 'No location provided';
+
+    return Material(
+      color: Colors.white,
+      elevation: 1,
+      shadowColor: Colors.black.withOpacity(0.05),
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      request.service.name,
+                      style: GoogleFonts.urbanist(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _statusColor(status).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _formatStatus(status),
+                      style: GoogleFonts.urbanist(
+                        color: _statusColor(status),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.person_outline,
+                    size: 16,
+                    color: Colors.black45,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      request.customer.name,
+                      style: GoogleFonts.urbanist(color: Colors.black87),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.schedule_rounded,
+                    size: 16,
+                    color: Colors.black45,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      scheduled,
+                      style: GoogleFonts.urbanist(
+                        color: Colors.black54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.place_outlined,
+                    size: 16,
+                    color: Colors.black45,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      location,
+                      style: GoogleFonts.urbanist(
+                        color: Colors.black54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatStatus(String status) {
+    switch (status.toLowerCase()) {
+      case 'accepted':
+        return 'Accepted';
+      case 'completed':
+        return 'Completed';
+      case 'awaiting_payment':
+        return 'Awaiting Payment';
+      case 'cancelled':
+      case 'canceled':
+        return 'Cancelled';
+      default:
+        return status.isEmpty
+            ? 'Pending'
+            : status[0].toUpperCase() + status.substring(1);
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'accepted':
+        return const Color(0xFF2E7D32);
+      case 'completed':
+        return const Color(0xFF1976D2);
+      case 'awaiting_payment':
+      case 'pending':
+        return const Color(0xFFF1592A);
+      case 'cancelled':
+      case 'canceled':
+        return const Color(0xFFD32F2F);
+      default:
+        return const Color(0xFFF1592A);
+    }
   }
 }

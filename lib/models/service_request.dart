@@ -8,6 +8,8 @@ class ServiceRequest {
   final DateTime? scheduledAt;
   final String status; // pending|accepted|ongoing|completed|cancelled
   final String? location;
+  final String? customerContact;
+  final bool customerContactVisible;
 
   ServiceRequest({
     required this.id,
@@ -17,6 +19,8 @@ class ServiceRequest {
     required this.scheduledAt,
     required this.status,
     required this.location,
+    required this.customerContact,
+    required this.customerContactVisible,
   });
 
   factory ServiceRequest.fromJson(Map<String, dynamic> j) {
@@ -36,6 +40,15 @@ class ServiceRequest {
     final scheduledRaw = j['scheduled_at'] ?? j['schedule'] ?? j['scheduledAt'];
     final status = (j['status'] ?? j['state'] ?? 'pending').toString();
     final loc = j['location']?.toString();
+    final contactVisible = (j['customer_contact_visible'] == true);
+    String? contact;
+    if (contactVisible && custMap.isNotEmpty) {
+      final rawContact = custMap['contact_number'] ?? custMap['phone'] ?? custMap['mobile'] ?? custMap['telephone'];
+      if (rawContact != null) {
+        final str = rawContact.toString().trim();
+        if (str.isNotEmpty) contact = str;
+      }
+    }
 
     // Build Service safely
     final serviceId = parseId(svcMap['id'] ?? j['service_id']);
@@ -77,6 +90,8 @@ class ServiceRequest {
           : null,
       status: status,
       location: loc,
+      customerContact: contact,
+      customerContactVisible: contactVisible,
     );
   }
 }

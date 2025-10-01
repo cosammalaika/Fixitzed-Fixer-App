@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/api_client.dart';
+import 'subscription_checkout_sheet.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -126,7 +127,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               Text('K$price', style: GoogleFonts.urbanist(fontWeight: FontWeight.w800, fontSize: 16)),
               const SizedBox(height: 6),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: () async {
+                  final purchased = await showModalBottomSheet<bool>(
+                    context: context,
+                    isScrollControlled: true,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    builder: (ctx) => SubscriptionCheckoutSheet(plan: p),
+                  );
+                  if (purchased == true) {
+                    if (!mounted) return;
+                    _load();
+                  }
+                },
                 child: const Text('Buy'),
               ),
             ],
