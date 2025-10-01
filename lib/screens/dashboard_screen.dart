@@ -4,6 +4,7 @@ import '../services/api_client.dart';
 import '../ui/snack.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/notifications_service.dart';
 import '../services/fixer_service.dart';
 import '../models/service_request.dart';
@@ -14,6 +15,8 @@ class DashboardScreen extends StatefulWidget {
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
+
+enum _RequestSheetResult { accepted, declined, purchase }
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final _api = ApiClient.I;
@@ -222,219 +225,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (_) {}
 
     if (!mounted) return;
-    await showDialog(
+    final result = await showModalBottomSheet<_RequestSheetResult>(
       context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        final canAccept = _coins > 0;
-        final brand = Theme.of(context).primaryColor;
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          titlePadding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-          contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-          title: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF6EEEA),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.event_available_rounded, color: brand),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'New Service Request',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                r.service.name,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 16,
-                ),
-              ),
-              const SizedBox(height: 10),
-              _infoRow(
-                icon: Icons.person_outline,
-                label: 'Customer',
-                value: r.customer.name,
-              ),
-              if (address != null) ...[
-                const SizedBox(height: 8),
-                _infoRow(
-                  icon: Icons.place_outlined,
-                  label: 'Location',
-                  value: address!,
-                ),
-              ],
-              if (phone != null) ...[
-                const SizedBox(height: 8),
-                _infoRow(
-                  icon: Icons.call_outlined,
-                  label: 'Phone',
-                  value: phone!,
-                ),
-              ],
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0x1AF1592A),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'Available Coins: $_coins',
-                      style: TextStyle(
-                        color: brand,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  if (!canAccept) ...[
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'You need an active subscription to accept requests.',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    icon: const Icon(Icons.close_rounded),
-                    label: const Text('Decline'),
-                    style: OutlinedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                if (!canAccept)
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.of(ctx).pop();
-                        Navigator.pushNamed(context, '/subscriptions').then((
-                          _,
-                        ) async {
-                          final w = await _fixer.wallet();
-                          setState(
-                            () => _coins =
-                                ((w['coin_balance'] ?? w['coins'] ?? 0) as num)
-                                    .toInt(),
-                          );
-                        });
-                      },
-                      icon: const Icon(Icons.credit_score_rounded),
-                      label: const Text('Purchase Plan'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: brand,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                if (canAccept)
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        final ok = await _fixer.acceptRequest(r.id);
-                        if (!mounted) return;
-                        Navigator.of(ctx).pop();
-                        AppSnack.show(
-                          context,
-                          message: ok ? 'Request accepted' : 'Failed to accept',
-                          success: ok,
-                        );
-                        final w = await _fixer.wallet();
-                        setState(
-                          () => _coins =
-                              ((w['coin_balance'] ?? w['coins'] ?? 0) as num)
-                                  .toInt(),
-                        );
-                        setState(() => _future = _load());
-                      },
-                      icon: const Icon(Icons.check_circle_outline),
-                      label: const Text('Accept'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: brand,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        );
-      },
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _NewRequestSheet(
+        request: r,
+        address: address,
+        phone: phone,
+        coins: _coins,
+        canAccept: _coins > 0,
+        onAccept: () => _fixer.acceptRequest(r.id),
+      ),
     );
-  }
 
-  Widget _infoRow({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    final brand = Theme.of(context).primaryColor;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: const BoxDecoration(
-            color: Color(0xFFF6EEEA),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: brand, size: 18),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(color: Colors.black54, fontSize: 12),
-              ),
-              const SizedBox(height: 2),
-              Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
-            ],
-          ),
-        ),
-      ],
-    );
+    if (!mounted) return;
+    switch (result) {
+      case _RequestSheetResult.accepted:
+        AppSnack.show(context, message: 'Request accepted', success: true);
+        final w = await _fixer.wallet();
+        if (!mounted) return;
+        setState(() {
+          _coins = ((w['coin_balance'] ?? w['coins'] ?? 0) as num).toInt();
+          _future = _load();
+        });
+        break;
+      case _RequestSheetResult.purchase:
+        await Navigator.pushNamed(context, '/subscriptions');
+        if (!mounted) return;
+        final w = await _fixer.wallet();
+        if (!mounted) return;
+        setState(
+          () =>
+              _coins = ((w['coin_balance'] ?? w['coins'] ?? 0) as num).toInt(),
+        );
+        break;
+      case _RequestSheetResult.declined:
+      case null:
+        break;
+    }
   }
 
   @override
@@ -967,6 +798,453 @@ class _RequestCard extends StatelessWidget {
         return const Color(0xFFD32F2F);
       default:
         return const Color(0xFFF1592A);
+    }
+  }
+}
+
+class _NewRequestSheet extends StatefulWidget {
+  final ServiceRequest request;
+  final String? address;
+  final String? phone;
+  final int coins;
+  final bool canAccept;
+  final Future<bool> Function() onAccept;
+
+  const _NewRequestSheet({
+    required this.request,
+    required this.address,
+    required this.phone,
+    required this.coins,
+    required this.canAccept,
+    required this.onAccept,
+  });
+
+  @override
+  State<_NewRequestSheet> createState() => _NewRequestSheetState();
+}
+
+class _NewRequestSheetState extends State<_NewRequestSheet> {
+  bool _processing = false;
+
+  @override
+  Widget build(BuildContext context) {
+    const brand = Color(0xFFF1592A);
+    const accent = Color(0xFFFFA26C);
+    final scheduled = widget.request.scheduledAt != null
+        ? DateFormat(
+            'EEE, d MMM • h:mm a',
+          ).format(widget.request.scheduledAt!.toLocal())
+        : null;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return SafeArea(
+      top: false,
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFFFF8F3), Colors.white],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset + 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 46,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.black12,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [brand, accent],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: brand.withOpacity(0.22),
+                        blurRadius: 24,
+                        offset: const Offset(0, 16),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.18),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.event_available_rounded,
+                              color: Colors.white,
+                              size: 26,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'New service request',
+                                  style: GoogleFonts.urbanist(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  widget.request.service.name,
+                                  style: GoogleFonts.urbanist(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'A customer is waiting for your response.',
+                                  style: GoogleFonts.urbanist(
+                                    color: Colors.white.withOpacity(0.9),
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: [
+                          _pill(
+                            icon: Icons.person_rounded,
+                            label: 'Customer',
+                            value: widget.request.customer.name,
+                          ),
+                          if (scheduled != null)
+                            _pill(
+                              icon: Icons.schedule_rounded,
+                              label: 'Scheduled',
+                              value: scheduled,
+                            ),
+                          _pill(
+                            icon: Icons.savings_rounded,
+                            label: 'Coins left',
+                            value: widget.coins.toString(),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 18,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(18),
+                  child: Column(
+                    children: [
+                      _detailTile(
+                        icon: Icons.person_outline,
+                        label: 'Customer',
+                        value: widget.request.customer.name,
+                      ),
+                      const SizedBox(height: 14),
+                      _detailTile(
+                        icon: Icons.place_outlined,
+                        label: 'Location',
+                        value: widget.address?.isNotEmpty == true
+                            ? widget.address!
+                            : 'Not provided',
+                      ),
+                      const SizedBox(height: 14),
+                      _detailTile(
+                        icon: Icons.call_outlined,
+                        label: 'Contact',
+                        value: widget.phone ?? 'Visible after you accept',
+                        trailing: widget.phone != null
+                            ? TextButton.icon(
+                                onPressed: () => _call(widget.phone!),
+                                icon: const Icon(Icons.call_rounded),
+                                label: const Text('Call'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: brand,
+                                ),
+                              )
+                            : null,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF2EA),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.monetization_on_outlined,
+                          color: brand,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          widget.canAccept
+                              ? 'Accepting will use your active plan.'
+                              : 'You need an active subscription or coins to take this job.',
+                          style: GoogleFonts.urbanist(
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!widget.canAccept) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Boost your availability by purchasing a plan – it unlocks new bookings instantly.',
+                    style: GoogleFonts.urbanist(
+                      color: Colors.black54,
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _processing
+                            ? null
+                            : () => Navigator.of(
+                                context,
+                              ).pop(_RequestSheetResult.declined),
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: Text(
+                          'Decline',
+                          style: GoogleFonts.urbanist(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: (!widget.canAccept || _processing)
+                            ? null
+                            : () async {
+                                setState(() => _processing = true);
+                                final ok = await widget.onAccept();
+                                if (!mounted) return;
+                                setState(() => _processing = false);
+                                if (!ok) {
+                                  AppSnack.show(
+                                    context,
+                                    message:
+                                        'Failed to accept request. Try again.',
+                                    success: false,
+                                  );
+                                  return;
+                                }
+                                Navigator.of(
+                                  context,
+                                ).pop(_RequestSheetResult.accepted);
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: brand,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: Text(
+                          _processing ? 'Accepting…' : 'Accept request',
+                          style: GoogleFonts.urbanist(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (!widget.canAccept) ...[
+                  const SizedBox(height: 14),
+                  ElevatedButton.icon(
+                    onPressed: _processing
+                        ? null
+                        : () => Navigator.of(
+                            context,
+                          ).pop(_RequestSheetResult.purchase),
+                    icon: const Icon(Icons.credit_score_rounded),
+                    label: Text(
+                      'Purchase plan',
+                      style: GoogleFonts.urbanist(fontWeight: FontWeight.w700),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2E7D32),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _pill({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.16),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 18),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.urbanist(
+                  color: Colors.white70,
+                  fontSize: 11,
+                ),
+              ),
+              Text(
+                value,
+                style: GoogleFonts.urbanist(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailTile({
+    required IconData icon,
+    required String label,
+    required String value,
+    Widget? trailing,
+  }) {
+    const brand = Color(0xFFF1592A);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: const BoxDecoration(
+            color: Color(0x1AF1592A),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: brand),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: GoogleFonts.urbanist(
+                  color: Colors.black54,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                value,
+                style: GoogleFonts.urbanist(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (trailing != null) trailing,
+      ],
+    );
+  }
+
+  Future<void> _call(String number) async {
+    final uri = Uri(scheme: 'tel', path: number);
+    if (!await launchUrl(uri)) {
+      if (!mounted) return;
+      AppSnack.show(context, message: 'Unable to start call', success: false);
     }
   }
 }
