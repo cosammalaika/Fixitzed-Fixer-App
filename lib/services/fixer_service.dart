@@ -105,7 +105,12 @@ class FixerService {
   }
 
   Future<bool> createPayment(int id, double amount) async {
-    final res = await _api.post('/api/requests/$id/payment', body: {
+    // Only customers can create payments on backend
+    return false;
+  }
+
+  Future<bool> createBill(int id, double amount) async {
+    final res = await _api.post('/api/fixer/requests/$id/bill', body: {
       'amount': amount,
     });
     return res.statusCode >= 200 && res.statusCode < 300;

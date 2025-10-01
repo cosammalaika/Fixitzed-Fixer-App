@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../services/api_client.dart';
+import '../ui/snack.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/notifications_service.dart';
 import '../services/fixer_service.dart';
@@ -52,10 +53,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           final data = root['data'];
           if (data is List) list = data;
           if (data is Map && data['data'] is List) list = data['data'] as List;
-          list ??= root.values.firstWhere(
-            (v) => v is List,
-            orElse: () => const [],
-          ) as List;
+          list ??=
+              root.values.firstWhere((v) => v is List, orElse: () => const [])
+                  as List;
         }
         requests = (list ?? const [])
             .whereType<Map>()
@@ -96,7 +96,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           unread = (root['unread_count'] as num?)?.toInt() ?? 0;
         } else if (root is Map && root['data'] is Map) {
           final d = root['data'] as Map;
-          if (d['unread_count'] is num) unread = (d['unread_count'] as num).toInt();
+          if (d['unread_count'] is num)
+            unread = (d['unread_count'] as num).toInt();
         }
       }
     } catch (_) {}
@@ -114,11 +115,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (raw is Map) data = Map<String, dynamic>.from(raw);
         }
         if (data != null) {
-          final first = (data['first_name'] ?? data['firstName'] ?? '').toString();
+          final first = (data['first_name'] ?? data['firstName'] ?? '')
+              .toString();
           final last = (data['last_name'] ?? data['lastName'] ?? '').toString();
           final n = (data['name'] ?? '').toString();
           name = n.isNotEmpty ? n : ('$first $last').trim();
-          avatarUrl = (data['avatar_url'] ?? data['avatar'] ?? data['profile_photo_url'])?.toString();
+          avatarUrl = _resolveImage((data['avatar_url'] ??
+                  data['avatar'] ??
+                  data['profile_photo_url'] ??
+                  data['profile_photo_path'] ??
+                  data['photo'])
+              ?.toString());
           location = (data['address'] ?? data['location'] ?? '').toString();
         }
       }
@@ -133,6 +140,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
       avatarUrl: avatarUrl,
       location: location,
     );
+  }
+
+  String? _resolveImage(String? raw) {
+    if (raw == null) return null;
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return null;
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    var origin = _api.baseUrl;
+    if (origin.endsWith('/api')) {
+      origin = origin.substring(0, origin.length - 4);
+    }
+    final path = trimmed.startsWith('/') ? trimmed.substring(1) : trimmed;
+    return '$origin/$path';
   }
 
   // Polling for new requests and prompt fixer
@@ -188,7 +210,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final raw = detail['customer'];
         if (raw is Map) customer = Map<String, dynamic>.from(raw as Map);
         phone =
-            (customer?['phone'] ?? customer?['mobile'] ?? customer?['phone_number'])
+            (customer?['phone'] ??
+                    customer?['mobile'] ??
+                    customer?['phone_number'])
                 ?.toString();
         address = (detail['location'] ?? address)?.toString();
       }
@@ -222,7 +246,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const Expanded(
                 child: Text(
                   'New Service Request',
-                  style: TextStyle(fontWeight: FontWeight.w800),
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
                 ),
               ),
             ],
@@ -344,13 +368,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         final ok = await _fixer.acceptRequest(r.id);
                         if (!mounted) return;
                         Navigator.of(ctx).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              ok ? 'Request accepted' : 'Failed to accept',
-                            ),
-                          ),
-                        );
+                        AppSnack.show(context, message: ok ? 'Request accepted' : 'Failed to accept', success: ok);
                         final w = await _fixer.wallet();
                         setState(
                           () => _coins =

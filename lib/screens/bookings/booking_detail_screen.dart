@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:fixitzed_fixer_app/ui/snack.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/fixer_service.dart';
@@ -54,7 +55,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               }
               Navigator.of(ctx).pop(v);
             },
-            child: const Text('Seng Bill'),
+            child: const Text('Send Bill'),
           ),
         ],
       ),
@@ -101,8 +102,8 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final brand = const Color(0xFFF1592A);
-    final service = (_data['service'] ?? {}) as Map<String, dynamic>;
-    final customer = (_data['customer'] ?? {}) as Map<String, dynamic>;
+    final service = _mapOf(_data['service']);
+    final customer = _mapOf(_data['customer']);
     final title = (service['name'] ?? service['title'] ?? 'Service').toString();
     final custName =
         (customer['name'] ??
@@ -187,6 +188,14 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   ),
                 ),
                 const SizedBox(height: 8),
+                if (status == 'awaiting_payment')
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: const Color(0x1AF1592A), borderRadius: BorderRadius.circular(12)),
+                    child: const Text('Awaiting customer payment', style: TextStyle(color: Color(0xFFF1592A), fontWeight: FontWeight.w700)),
+                  ),
                 Column(
                   children: [
                     Row(
@@ -200,22 +209,19 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: ElevatedButton(
-                            onPressed:
-                                status == 'accepted' || status == 'completed'
+                            onPressed: status == 'accepted' || status == 'completed' || status == 'awaiting_payment'
                                 ? null
                                 : () async {
                                     final id = _data['id'] as int?;
                                     if (id == null) return;
                                     final ok = await _fixer.acceptRequest(id);
                                     if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          ok
-                                              ? 'Request accepted'
-                                              : 'Failed to accept',
-                                        ),
-                                      ),
+                                    AppSnack.show(
+                                      context,
+                                      message: ok
+                                          ? 'Request accepted'
+                                          : 'Failed to accept',
+                                      success: ok,
                                     );
                                     if (ok) Navigator.of(context).pop(true);
                                   },
@@ -239,14 +245,12 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                                       'cancelled',
                                     );
                                     if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          ok
-                                              ? 'Request cancelled'
-                                              : 'Failed to cancel',
-                                        ),
-                                      ),
+                                    AppSnack.show(
+                                      context,
+                                      message: ok
+                                          ? 'Request cancelled'
+                                          : 'Failed to cancel',
+                                      success: ok,
                                     );
                                     if (ok) Navigator.of(context).pop(true);
                                   },
@@ -262,41 +266,29 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                                     if (id == null) return;
                                     final amount = await _promptAmount(context);
                                     if (amount == null) return;
-                                    final created = await _fixer.createPayment(
+                                    final created = await _fixer.createBill(
                                       id,
                                       amount,
                                     );
                                     if (!mounted) return;
                                     if (!created) {
-                                      ScaffoldMessenger.of(
+                                      AppSnack.show(
                                         context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Failed to create bill',
-                                          ),
-                                        ),
+                                        message: 'Failed to create bill',
+                                        success: false,
                                       );
                                       return;
                                     }
-                                    final ok = await _fixer.updateStatus(
-                                      id,
-                                      'completed',
-                                    );
                                     if (!mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          ok
-                                              ? 'Marked as completed'
-                                              : 'Failed to complete',
-                                        ),
-                                      ),
+                                    AppSnack.show(
+                                      context,
+                                      message: 'Bill sent to customer',
+                                      success: true,
                                     );
-                                    if (ok) Navigator.of(context).pop(true);
+                                    Navigator.of(context).pop(true);
                                   }
                                 : null,
-                            child: const Text('Mark Completed'),
+                            child: const Text('Send Bill'),
                           ),
                         ),
                       ],
@@ -306,6 +298,13 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
               ],
             ),
     );
+  }
+
+  Map<String, dynamic> _mapOf(dynamic raw) {
+    if (raw is Map) {
+      return raw.map((key, value) => MapEntry(key.toString(), value));
+    }
+    return <String, dynamic>{};
   }
 
   Widget _infoRow(IconData icon, String label, String value) {
@@ -355,6 +354,10 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         bg = Colors.green.withOpacity(0.12);
         fg = Colors.green;
         break;
+      case 'awaiting_payment':
+        bg = const Color(0x1AF1592A);
+        fg = const Color(0xFFF1592A);
+        break;
       case 'completed':
         bg = Colors.blue.withOpacity(0.12);
         fg = Colors.blue;
@@ -363,6 +366,15 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         bg = Colors.grey.withOpacity(0.15);
         fg = Colors.grey.shade700;
     }
+    String format(String value) {
+      if (value.isEmpty) return '—';
+      return value
+          .split('_')
+          .map((part) =>
+              part.isEmpty ? part : part[0].toUpperCase() + part.substring(1))
+          .join(' ');
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -370,7 +382,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        status.isEmpty ? '—' : status,
+        format(status),
         style: GoogleFonts.urbanist(color: fg, fontWeight: FontWeight.w600),
       ),
     );

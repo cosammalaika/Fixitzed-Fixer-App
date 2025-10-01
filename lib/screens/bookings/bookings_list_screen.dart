@@ -178,6 +178,10 @@ class _BookingsListScreenState extends State<BookingsListScreen>
         bg = Colors.green.withOpacity(0.12);
         fg = Colors.green;
         break;
+      case 'awaiting_payment':
+        bg = const Color(0x1AF1592A);
+        fg = const Color(0xFFF1592A);
+        break;
       case 'completed':
         bg = Colors.blue.withOpacity(0.12);
         fg = Colors.blue;
@@ -189,7 +193,10 @@ class _BookingsListScreenState extends State<BookingsListScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-      child: Text(status, style: TextStyle(color: fg, fontWeight: FontWeight.w600)),
+      child: Text(
+        status == 'awaiting_payment' ? 'Awaiting Payment' : status,
+        style: TextStyle(color: fg, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }
