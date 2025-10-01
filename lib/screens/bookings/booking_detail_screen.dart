@@ -26,6 +26,42 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     }
   }
 
+  Future<double?> _promptAmount(BuildContext context) async {
+    final ctrl = TextEditingController();
+    final val = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Enter Service Charge'),
+        content: TextField(
+          controller: ctrl,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(hintText: 'e.g., K250.00'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final v = double.tryParse(ctrl.text.trim());
+              if (v == null || v <= 0) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text('Enter a valid amount')),
+                );
+                return;
+              }
+              Navigator.of(ctx).pop(v);
+            },
+            child: const Text('Seng Bill'),
+          ),
+        ],
+      ),
+    );
+    return val;
+  }
+
   Future<void> _load(int id) async {
     setState(() => _loading = true);
     try {
@@ -43,14 +79,16 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           List? list;
           if (root is Map<String, dynamic>) {
             final data = root['data'];
-            list = (data is Map<String, dynamic>) ? (data['data'] as List?) : (data as List?);
+            list = (data is Map<String, dynamic>)
+                ? (data['data'] as List?)
+                : (data as List?);
           } else if (root is List) {
             list = root;
           }
           final found = (list ?? []).cast<Map<String, dynamic>?>().firstWhere(
-                (e) => (e?['id'] as int?) == id,
-                orElse: () => null,
-              );
+            (e) => (e?['id'] as int?) == id,
+            orElse: () => null,
+          );
           if (found != null && mounted) setState(() => _data = found);
         }
       }
@@ -66,7 +104,13 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     final service = (_data['service'] ?? {}) as Map<String, dynamic>;
     final customer = (_data['customer'] ?? {}) as Map<String, dynamic>;
     final title = (service['name'] ?? service['title'] ?? 'Service').toString();
-    final custName = (customer['name'] ?? ((customer['first_name'] ?? '').toString() + ' ' + (customer['last_name'] ?? '').toString())).toString().trim();
+    final custName =
+        (customer['name'] ??
+                ((customer['first_name'] ?? '').toString() +
+                    ' ' +
+                    (customer['last_name'] ?? '').toString()))
+            .toString()
+            .trim();
     final location = (_data['location'] ?? '').toString();
     final status = (_data['status'] ?? '').toString();
 
@@ -76,7 +120,13 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         elevation: 0,
         iconTheme: IconThemeData(color: theme.colorScheme.onBackground),
         centerTitle: true,
-        title: Text('Booking Details', style: GoogleFonts.urbanist(color: theme.colorScheme.onBackground, fontWeight: FontWeight.w700)),
+        title: Text(
+          'Booking Details',
+          style: GoogleFonts.urbanist(
+            color: theme.colorScheme.onBackground,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -88,7 +138,13 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   decoration: BoxDecoration(
                     color: theme.cardColor,
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 6))],
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.06),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,44 +152,154 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(title, style: GoogleFonts.urbanist(fontWeight: FontWeight.w700, fontSize: 18)),
+                            child: Text(
+                              title,
+                              style: GoogleFonts.urbanist(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 18,
+                              ),
+                            ),
                           ),
                           _statusChip(status),
                         ],
                       ),
                       const SizedBox(height: 12),
-                      _infoRow(Icons.person, 'Customer', custName.isEmpty ? '—' : custName),
+                      _infoRow(
+                        Icons.person,
+                        'Customer',
+                        custName.isEmpty ? '—' : custName,
+                      ),
                       const SizedBox(height: 8),
-                      _infoRow(Icons.place_outlined, 'Location', location.isEmpty ? '—' : location),
+                      _infoRow(
+                        Icons.place_outlined,
+                        'Location',
+                        location.isEmpty ? '—' : location,
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text('Actions', style: GoogleFonts.urbanist(fontWeight: FontWeight.w800, fontSize: 16)),
+                Text(
+                  'Actions',
+                  style: GoogleFonts.urbanist(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
                 const SizedBox(height: 8),
-                Row(
+                Column(
                   children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Close'),
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('Close'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed:
+                                status == 'accepted' || status == 'completed'
+                                ? null
+                                : () async {
+                                    final id = _data['id'] as int?;
+                                    if (id == null) return;
+                                    final ok = await _fixer.acceptRequest(id);
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          ok
+                                              ? 'Request accepted'
+                                              : 'Failed to accept',
+                                        ),
+                                      ),
+                                    );
+                                    if (ok) Navigator.of(context).pop(true);
+                                  },
+                            child: const Text('Accept'),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: status == 'accepted' || status == 'completed'
-                            ? null
-                            : () async {
-                                final id = _data['id'] as int?;
-                                if (id == null) return;
-                                final ok = await _fixer.acceptRequest(id);
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(ok ? 'Request accepted' : 'Failed to accept')));
-                                if (ok) Navigator.of(context).pop(true);
-                              },
-                        child: const Text('Accept'),
-                      ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: status == 'completed'
+                                ? null
+                                : () async {
+                                    final id = _data['id'] as int?;
+                                    if (id == null) return;
+                                    final ok = await _fixer.updateStatus(
+                                      id,
+                                      'cancelled',
+                                    );
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          ok
+                                              ? 'Request cancelled'
+                                              : 'Failed to cancel',
+                                        ),
+                                      ),
+                                    );
+                                    if (ok) Navigator.of(context).pop(true);
+                                  },
+                            child: const Text('Cancel'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: status == 'accepted'
+                                ? () async {
+                                    final id = _data['id'] as int?;
+                                    if (id == null) return;
+                                    final amount = await _promptAmount(context);
+                                    if (amount == null) return;
+                                    final created = await _fixer.createPayment(
+                                      id,
+                                      amount,
+                                    );
+                                    if (!mounted) return;
+                                    if (!created) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Failed to create bill',
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    final ok = await _fixer.updateStatus(
+                                      id,
+                                      'completed',
+                                    );
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          ok
+                                              ? 'Marked as completed'
+                                              : 'Failed to complete',
+                                        ),
+                                      ),
+                                    );
+                                    if (ok) Navigator.of(context).pop(true);
+                                  }
+                                : null,
+                            child: const Text('Mark Completed'),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -147,7 +313,10 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       children: [
         Container(
           padding: const EdgeInsets.all(8),
-          decoration: const BoxDecoration(color: Color(0xFFF6EEEA), shape: BoxShape.circle),
+          decoration: const BoxDecoration(
+            color: Color(0xFFF6EEEA),
+            shape: BoxShape.circle,
+          ),
           child: const Icon(Icons.info_outline, color: Color(0xFFF1592A)),
         ),
         const SizedBox(width: 10),
@@ -155,9 +324,18 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: GoogleFonts.urbanist(color: Colors.black54, fontSize: 12)),
+              Text(
+                label,
+                style: GoogleFonts.urbanist(
+                  color: Colors.black54,
+                  fontSize: 12,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(value, style: GoogleFonts.urbanist(fontWeight: FontWeight.w600)),
+              Text(
+                value,
+                style: GoogleFonts.urbanist(fontWeight: FontWeight.w600),
+              ),
             ],
           ),
         ),
@@ -187,8 +365,14 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-      child: Text(status.isEmpty ? '—' : status, style: GoogleFonts.urbanist(color: fg, fontWeight: FontWeight.w600)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        status.isEmpty ? '—' : status,
+        style: GoogleFonts.urbanist(color: fg, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }

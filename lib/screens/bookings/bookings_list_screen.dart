@@ -18,11 +18,12 @@ class _BookingsListScreenState extends State<BookingsListScreen>
   List<ServiceRequest> _pending = [];
   List<ServiceRequest> _accepted = [];
   List<ServiceRequest> _completed = [];
+  List<ServiceRequest> _declined = [];
 
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 3, vsync: this);
+    _tab = TabController(length: 4, vsync: this);
     _load();
   }
 
@@ -32,11 +33,13 @@ class _BookingsListScreenState extends State<BookingsListScreen>
       final p = await _fixer.requests(status: 'pending');
       final a = await _fixer.requests(status: 'accepted');
       final c = await _fixer.requests(status: 'completed');
+      final d = await _fixer.requests(status: 'cancelled');
       if (!mounted) return;
       setState(() {
         _pending = p;
         _accepted = a;
         _completed = c;
+        _declined = d;
       });
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -69,6 +72,7 @@ class _BookingsListScreenState extends State<BookingsListScreen>
             Tab(text: 'New'),
             Tab(text: 'Accepted'),
             Tab(text: 'Completed'),
+            Tab(text: 'Declined'),
           ],
         ),
       ),
@@ -84,6 +88,7 @@ class _BookingsListScreenState extends State<BookingsListScreen>
                     _list(_pending),
                     _list(_accepted),
                     _list(_completed),
+                    _list(_declined),
                   ],
                 ),
               ),

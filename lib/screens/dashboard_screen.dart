@@ -45,20 +45,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       if (reqRes.statusCode == 200) {
         final root = jsonDecode(reqRes.body);
-        List? list;
-        if (root is Map<String, dynamic>) {
-          final data = root['data'];
-          list = (data is Map<String, dynamic>)
-              ? (data['data'] as List?)
-              : (data as List?);
-        } else if (root is List) {
+        List<dynamic>? list;
+        if (root is List) {
           list = root;
+        } else if (root is Map) {
+          final data = root['data'];
+          if (data is List) list = data;
+          if (data is Map && data['data'] is List) list = data['data'] as List;
+          list ??= root.values.firstWhere(
+            (v) => v is List,
+            orElse: () => const [],
+          ) as List;
         }
-        if (list != null) {
-          requests = list
-              .map((e) => ServiceRequest.fromJson(e as Map<String, dynamic>))
-              .toList();
-        }
+        requests = (list ?? const [])
+            .whereType<Map>()
+            .map((e) => ServiceRequest.fromJson(Map<String, dynamic>.from(e)))
+            .toList();
       }
     } catch (_) {}
 
@@ -66,22 +68,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
     int coins = 0;
     try {
       if (walletRes.statusCode == 200) {
-        final root = jsonDecode(walletRes.body) as Map<String, dynamic>;
-        final map = (root['data'] ?? root) as Map<String, dynamic>;
-        coins = ((map['coin_balance'] ?? map['coins'] ?? 0) as num).toInt();
+        final root = jsonDecode(walletRes.body);
+        Map<String, dynamic> m;
+        if (root is Map) {
+          final d = root['data'];
+          if (d is Map) {
+            m = Map<String, dynamic>.from(d);
+          } else {
+            m = Map<String, dynamic>.from(root as Map);
+          }
+          coins = ((m['coin_balance'] ?? m['coins'] ?? 0) as num).toInt();
+        }
       }
     } catch (_) {}
 
     // Compute completed requests count for stat box
-    final completedCount = requests.where((r) => r.status == 'completed').length;
+    final completedCount = requests
+        .where((r) => r.status == 'completed')
+        .length;
 
     // Parse unread notifications count
     int unread = 0;
     try {
       if (notifMeta.statusCode == 200) {
         final root = jsonDecode(notifMeta.body);
-        if (root is Map<String, dynamic>) {
+        if (root is Map && root['unread_count'] != null) {
           unread = (root['unread_count'] as num?)?.toInt() ?? 0;
+        } else if (root is Map && root['data'] is Map) {
+          final d = root['data'] as Map;
+          if (d['unread_count'] is num) unread = (d['unread_count'] as num).toInt();
         }
       }
     } catch (_) {}
@@ -94,15 +109,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (meRes.statusCode == 200) {
         final root = jsonDecode(meRes.body);
         Map<String, dynamic>? data;
-        if (root is Map<String, dynamic>) {
-          data = (root['user'] ?? root['data'] ?? root) as Map<String, dynamic>;
+        if (root is Map) {
+          final raw = (root['user'] ?? root['data'] ?? root);
+          if (raw is Map) data = Map<String, dynamic>.from(raw);
         }
         if (data != null) {
-          final first = (data['first_name'] ?? '').toString();
-          final last = (data['last_name'] ?? '').toString();
+          final first = (data['first_name'] ?? data['firstName'] ?? '').toString();
+          final last = (data['last_name'] ?? data['lastName'] ?? '').toString();
           final n = (data['name'] ?? '').toString();
-          name = (n.isNotEmpty ? n : ('$first $last').trim());
-          avatarUrl = (data['avatar_url'] ?? data['avatar'])?.toString();
+          name = n.isNotEmpty ? n : ('$first $last').trim();
+          avatarUrl = (data['avatar_url'] ?? data['avatar'] ?? data['profile_photo_url'])?.toString();
           location = (data['address'] ?? data['location'] ?? '').toString();
         }
       }
@@ -138,7 +154,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (_polling) return;
     _polling = true;
     try {
-      final list = await _fixer.requests(status: 'pending');
+      // Assigned-to-me pending
+      final assigned = await _fixer.requests(status: 'pending');
+      // Attempt to fetch unassigned/eligible if backend supports it
+      List<ServiceRequest> pool = [];
+      try {
+        pool = await _fixer.unassigned();
+      } catch (_) {}
+      final list = <ServiceRequest>[...assigned, ...pool];
       for (final r in list) {
         if (_seen.contains(r.id)) continue;
         _seen.add(r.id);
@@ -161,11 +184,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       final detail = await _fixer.requestDetail(r.id);
       if (detail != null) {
-        final customer = detail['customer'] as Map<String, dynamic>?;
+        Map<String, dynamic>? customer;
+        final raw = detail['customer'];
+        if (raw is Map) customer = Map<String, dynamic>.from(raw as Map);
         phone =
-            (customer?['phone'] ??
-                    customer?['mobile'] ??
-                    customer?['phone_number'])
+            (customer?['phone'] ?? customer?['mobile'] ?? customer?['phone_number'])
                 ?.toString();
         address = (detail['location'] ?? address)?.toString();
       }
@@ -177,82 +200,215 @@ class _DashboardScreenState extends State<DashboardScreen> {
       barrierDismissible: false,
       builder: (ctx) {
         final canAccept = _coins > 0;
+        final brand = Theme.of(context).primaryColor;
         return AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
           ),
-          title: const Text('New Service Request'),
+          titlePadding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+          contentPadding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+          actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF6EEEA),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.event_available_rounded, color: brand),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'New Service Request',
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 r.service.name,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
               ),
-              const SizedBox(height: 8),
-              Text('Customer: ${r.customer.name}'),
-              if (address != null) Text('Location: $address'),
-              if (phone != null) Text('Phone: $phone'),
+              const SizedBox(height: 10),
+              _infoRow(
+                icon: Icons.person_outline,
+                label: 'Customer',
+                value: r.customer.name,
+              ),
+              if (address != null) ...[
+                const SizedBox(height: 8),
+                _infoRow(
+                  icon: Icons.place_outlined,
+                  label: 'Location',
+                  value: address!,
+                ),
+              ],
+              if (phone != null) ...[
+                const SizedBox(height: 8),
+                _infoRow(
+                  icon: Icons.call_outlined,
+                  label: 'Phone',
+                  value: phone!,
+                ),
+              ],
               const SizedBox(height: 12),
-              Text('Coins left: $_coins'),
-              if (!canAccept)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: Text(
-                    'You need an active subscription to accept requests.',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0x1AF1592A),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Available Coins: $_coins',
+                      style: TextStyle(
+                        color: brand,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
+                  if (!canAccept) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'You need an active subscription to accept requests.',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Decline'),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                    label: const Text('Decline'),
+                    style: OutlinedButton.styleFrom(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                if (!canAccept)
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        Navigator.pushNamed(context, '/subscriptions').then((
+                          _,
+                        ) async {
+                          final w = await _fixer.wallet();
+                          setState(
+                            () => _coins =
+                                ((w['coin_balance'] ?? w['coins'] ?? 0) as num)
+                                    .toInt(),
+                          );
+                        });
+                      },
+                      icon: const Icon(Icons.credit_score_rounded),
+                      label: const Text('Purchase Plan'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: brand,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                if (canAccept)
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final ok = await _fixer.acceptRequest(r.id);
+                        if (!mounted) return;
+                        Navigator.of(ctx).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              ok ? 'Request accepted' : 'Failed to accept',
+                            ),
+                          ),
+                        );
+                        final w = await _fixer.wallet();
+                        setState(
+                          () => _coins =
+                              ((w['coin_balance'] ?? w['coins'] ?? 0) as num)
+                                  .toInt(),
+                        );
+                        setState(() => _future = _load());
+                      },
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: const Text('Accept'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: brand,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
-            if (!canAccept)
-              TextButton(
-                onPressed: () {
-                  Navigator.of(ctx).pop();
-                  Navigator.pushNamed(context, '/subscriptions').then((
-                    _,
-                  ) async {
-                    final w = await _fixer.wallet();
-                    setState(
-                      () => _coins =
-                          ((w['coin_balance'] ?? w['coins'] ?? 0) as num)
-                              .toInt(),
-                    );
-                  });
-                },
-                child: const Text('Purchase Plan'),
-              ),
-            if (canAccept)
-              ElevatedButton(
-                onPressed: () async {
-                  final ok = await _fixer.acceptRequest(r.id);
-                  if (!mounted) return;
-                  Navigator.of(ctx).pop();
-                  final snackBar = SnackBar(
-                    content: Text(ok ? 'Request accepted' : 'Failed to accept'),
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(snackBar);
-                  // refresh coins after accept (server may deduct)
-                  final w = await _fixer.wallet();
-                  setState(
-                    () => _coins =
-                        ((w['coin_balance'] ?? w['coins'] ?? 0) as num).toInt(),
-                  );
-                  setState(() => _future = _load());
-                },
-                child: const Text('Accept'),
-              ),
           ],
         );
       },
+    );
+  }
+
+  Widget _infoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    final brand = Theme.of(context).primaryColor;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: const BoxDecoration(
+            color: Color(0xFFF6EEEA),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: brand, size: 18),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(color: Colors.black54, fontSize: 12),
+              ),
+              const SizedBox(height: 2),
+              Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -352,11 +508,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 16),
                   _BalanceCard(coins: d.coins),
                   const SizedBox(height: 12),
-                _StatRow(
-                  notifications: d.notificationsUnread,
-                  requests: d.requests.length,
-                  completed: d.completedCount,
-                ),
+                  _StatRow(
+                    notifications: d.notificationsUnread,
+                    requests: d.requests.length,
+                    completed: d.completedCount,
+                  ),
                   const SizedBox(height: 12),
                   Card(
                     child: ListTile(
