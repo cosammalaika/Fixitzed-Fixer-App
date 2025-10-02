@@ -62,35 +62,100 @@ class _BookingsListScreenState extends State<BookingsListScreen>
         iconTheme: IconThemeData(color: theme.colorScheme.onBackground),
         centerTitle: true,
         title: Text('Bookings', style: GoogleFonts.urbanist(color: theme.colorScheme.onBackground, fontWeight: FontWeight.w700)),
-        bottom: TabBar(
-          controller: _tab,
-          indicatorColor: const Color(0xFFF1592A),
-          labelColor: theme.colorScheme.onBackground,
-          labelStyle: GoogleFonts.urbanist(fontWeight: FontWeight.w700),
-          unselectedLabelStyle: GoogleFonts.urbanist(),
-          tabs: const [
-            Tab(text: 'New'),
-            Tab(text: 'Accepted'),
-            Tab(text: 'Completed'),
-            Tab(text: 'Declined'),
-          ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: Container(
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.black12.withOpacity(0.06),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: TabBar(
+                controller: _tab,
+                indicator: BoxDecoration(
+                  color: const Color(0xFFF1592A),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                indicatorSize: TabBarIndicatorSize.tab,
+                labelColor: Colors.white,
+                unselectedLabelColor: theme.hintColor,
+                labelStyle: GoogleFonts.urbanist(fontWeight: FontWeight.w700),
+                unselectedLabelStyle: GoogleFonts.urbanist(),
+                tabs: const [
+                  Tab(text: 'New'),
+                  Tab(text: 'Accepted'),
+                  Tab(text: 'Completed'),
+                  Tab(text: 'Declined'),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
       body: SafeArea(
         top: false,
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: _load,
-                child: TabBarView(
-                  controller: _tab,
-                  children: [
-                    _list(_pending),
-                    _list(_accepted),
-                    _list(_completed),
-                    _list(_declined),
-                  ],
-                ),
+            : Column(
+                children: [
+                  // Gradient intro banner for visual parity with popups
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFF1592A), Color(0xFFFFA26C)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFF1592A).withOpacity(0.18),
+                          blurRadius: 18,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                          child: const Icon(Icons.event_available_rounded, color: Colors.white),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Manage your bookings', style: GoogleFonts.urbanist(color: Colors.white, fontWeight: FontWeight.w800)),
+                              const SizedBox(height: 4),
+                              Text('Track new, accepted and completed jobs at a glance.', style: GoogleFonts.urbanist(color: Colors.white.withOpacity(0.9))),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: _load,
+                      child: TabBarView(
+                        controller: _tab,
+                        children: [
+                          _list(_pending),
+                          _list(_accepted),
+                          _list(_completed),
+                          _list(_declined),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
       ),
     );
@@ -123,9 +188,8 @@ class _BookingsListScreenState extends State<BookingsListScreen>
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 6)),
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 6))],
+            border: Border.all(color: const Color(0x1AF1592A)),
           ),
           child: InkWell(
             onTap: () => Navigator.pushNamed(context, '/booking_detail', arguments: r.id),
@@ -133,7 +197,7 @@ class _BookingsListScreenState extends State<BookingsListScreen>
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(color: Color(0xFFF6EEEA), shape: BoxShape.circle),
+                  decoration: const BoxDecoration(color: Color(0x1AF1592A), shape: BoxShape.circle),
                   child: const Icon(Icons.handyman_rounded, color: Color(0xFFF1592A)),
                 ),
                 const SizedBox(width: 12),
@@ -144,7 +208,7 @@ class _BookingsListScreenState extends State<BookingsListScreen>
                       Row(
                         children: [
                           Expanded(
-                            child: Text(r.service.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                            child: Text(r.service.name, style: GoogleFonts.urbanist(fontWeight: FontWeight.w700)),
                           ),
                           _statusChip(r.status),
                         ],

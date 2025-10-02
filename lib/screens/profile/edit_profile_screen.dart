@@ -23,6 +23,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     const brand = Color(0xFFF1592A);
+    const accent = Color(0xFFFFA26C);
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -39,6 +40,41 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [brand, accent],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(color: brand.withOpacity(0.18), blurRadius: 18, offset: const Offset(0, 12)),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                        child: const Icon(Icons.edit_rounded, color: Colors.white),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Update your profile', style: GoogleFonts.urbanist(color: Colors.white, fontWeight: FontWeight.w800)),
+                            const SizedBox(height: 4),
+                            Text('Keep your info current so customers can reach you.', style: GoogleFonts.urbanist(color: Colors.white.withOpacity(0.9))),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 TextFormField(
                   controller: _nameCtrl,
                   decoration: _dec(context, 'Full Name'),
@@ -59,6 +95,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved')));
                     Navigator.of(context).pop(true);
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: brand,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
                   child: const Text('Save Changes'),
                 )
               ],

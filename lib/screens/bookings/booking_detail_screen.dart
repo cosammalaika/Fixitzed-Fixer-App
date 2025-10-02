@@ -19,46 +19,33 @@ class BookingDetailScreen extends StatefulWidget {
 class _BookingDetailScreenState extends State<BookingDetailScreen> {
   final _api = ApiClient.I;
   final _fixer = FixerService();
-  bool _presented = false;
+  bool _loading = true;
+  Map<String, dynamic>? _detail;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final id = ModalRoute.of(context)?.settings.arguments as int?;
-    if (id != null && !_presented) {
-      _presented = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) => _openSheet(id));
+    if (id != null && _loading) {
+      _load(id);
     }
   }
 
-  Future<void> _openSheet(int id) async {
+  Future<void> _load(int id) async {
     final detail = await _fetchDetail(id);
     if (!mounted) return;
-
     if (detail == null) {
-      AppSnack.show(
-        context,
-        message: 'Unable to load booking details',
-        success: false,
-      );
-      Navigator.of(context).pop();
+      AppSnack.show(context, message: 'Unable to load booking details', success: false);
+      setState(() {
+        _loading = false;
+        _detail = null;
+      });
       return;
     }
-
-    final refresh = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
-      backgroundColor: Colors.transparent,
-      clipBehavior: Clip.antiAlias,
-      builder: (ctx) =>
-          _FixerBookingSheet(detail: detail, fixerService: _fixer),
-    );
-
-    if (!mounted) return;
-    Navigator.of(context).pop(refresh == true);
+    setState(() {
+      _detail = detail;
+      _loading = false;
+    });
   }
 
   Future<Map<String, dynamic>?> _fetchDetail(int id) async {
@@ -88,15 +75,47 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   }
 
   @override
-  Widget build(BuildContext context) =>
-      Container(color: Colors.black.withOpacity(0.35));
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: IconThemeData(color: theme.colorScheme.onBackground),
+        title: Text(
+          'Booking Detail',
+          style: GoogleFonts.urbanist(
+            color: theme.colorScheme.onBackground,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      backgroundColor: theme.scaffoldBackgroundColor,
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : (_detail == null
+              ? Center(
+                  child: Text(
+                    'Unable to load booking details',
+                    style: GoogleFonts.urbanist(color: Colors.black54),
+                  ),
+                )
+              : _FixerBookingSheet(
+                  detail: _detail!,
+                  fixerService: _fixer,
+                  showHandle: false,
+                )),
+    );
+  }
 }
 
 class _FixerBookingSheet extends StatefulWidget {
   final Map<String, dynamic> detail;
   final FixerService fixerService;
+  final bool showHandle;
 
-  const _FixerBookingSheet({required this.detail, required this.fixerService});
+  const _FixerBookingSheet({required this.detail, required this.fixerService, this.showHandle = true});
 
   @override
   State<_FixerBookingSheet> createState() => _FixerBookingSheetState();
@@ -168,14 +187,16 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     final controller = TextEditingController();
     bool submitting = false;
 
+    final theme = Theme.of(context);
     return showModalBottomSheet<double>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
+      barrierColor: Colors.black.withOpacity(0.4),
+      backgroundColor: theme.scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      backgroundColor: Colors.transparent,
-      clipBehavior: Clip.antiAlias,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setLocal) {
@@ -417,15 +438,17 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 52,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.black12,
-                      borderRadius: BorderRadius.circular(12),
+                  if (widget.showHandle) ...[
+                    Container(
+                      width: 52,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.black12,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
+                    const SizedBox(height: 18),
+                  ],
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(

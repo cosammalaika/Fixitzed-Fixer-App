@@ -46,11 +46,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    const brand = Color(0xFFF1592A);
+    const accent = Color(0xFFFFA26C);
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
-        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onBackground),
+        iconTheme: IconThemeData(
+          color: Theme.of(context).colorScheme.onBackground,
+        ),
         centerTitle: true,
         title: Text(
           'Subscription Plans',
@@ -67,6 +71,63 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: [
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [brand, accent],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(
+                          color: brand.withOpacity(0.18),
+                          blurRadius: 18,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.workspace_premium_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Boost your reach',
+                                style: GoogleFonts.urbanist(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Purchase a plan to get coins and accept more jobs.',
+                                style: GoogleFonts.urbanist(
+                                  color: Colors.white.withOpacity(0.9),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   ..._plans.map((p) => _planCard(context, p)).toList(),
                   if (_plans.isEmpty)
                     const Padding(
@@ -100,50 +161,107 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF6EEEA),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.credit_score, color: Color(0xFFF1592A)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: GoogleFonts.urbanist(fontWeight: FontWeight.w700, fontSize: 16)),
-                const SizedBox(height: 4),
-                Text('$coins coins • $days days', style: GoogleFonts.urbanist(color: Colors.black54)),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          // Card header
+          Row(
             children: [
-              Text('K$price', style: GoogleFonts.urbanist(fontWeight: FontWeight.w800, fontSize: 16)),
-              const SizedBox(height: 6),
-              ElevatedButton(
-                onPressed: () async {
-                  final purchased = await showModalBottomSheet<bool>(
-                    context: context,
-                    isScrollControlled: true,
-                    shape: const RoundedRectangleBorder(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: const BoxDecoration(
+                  color: Color(0x1AF1592A),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.workspace_premium_rounded,
+                  color: Color(0xFFF1592A),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: GoogleFonts.urbanist(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
                     ),
-                    builder: (ctx) => SubscriptionCheckoutSheet(plan: p),
-                  );
-                  if (purchased == true) {
-                    if (!mounted) return;
-                    _load();
-                  }
-                },
-                child: const Text('Buy'),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _pill(Icons.savings_rounded, '$coins coins'),
+                        _pill(Icons.calendar_today_rounded, '$days days'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                'K$price',
+                style: GoogleFonts.urbanist(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () async {
+                final purchased = await showModalBottomSheet<bool>(
+                  context: context,
+                  isScrollControlled: true,
+                  useSafeArea: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (ctx) => SubscriptionCheckoutSheet(plan: p),
+                );
+                if (purchased == true) {
+                  if (!mounted) return;
+                  _load();
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFF1592A),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: const Text('Buy Plan'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pill(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0x1AF1592A),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: const Color(0xFFF1592A)),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: GoogleFonts.urbanist(
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFFF1592A),
+            ),
           ),
         ],
       ),
