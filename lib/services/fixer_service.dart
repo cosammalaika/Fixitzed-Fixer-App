@@ -1,8 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../models/fixer.dart';
 import '../models/service_request.dart';
 import 'api_client.dart';
+import 'local_notification_service.dart';
 
 class FixerService {
   final _api = ApiClient.I;
@@ -34,10 +40,12 @@ class FixerService {
         orElse: () => const [],
       ) as List;
     }
-    return (list ?? const [])
+    final requests = (list ?? const [])
         .whereType<Map<String, dynamic>>()
         .map(ServiceRequest.fromJson)
         .toList();
+    unawaited(_notifyAssignments(requests));
+    return requests;
   }
 
   /// Try to fetch unassigned/eligible requests for this fixer.
@@ -55,7 +63,10 @@ class FixerService {
       } else {
         list = [];
       }
-      return list.whereType<Map<String, dynamic>>().map(ServiceRequest.fromJson).toList();
+      final requests =
+          list.whereType<Map<String, dynamic>>().map(ServiceRequest.fromJson).toList();
+      unawaited(_notifyAssignments(requests));
+      return requests;
     }
     return [];
   }
@@ -145,5 +156,40 @@ class FixerService {
     req.files.add(await http.MultipartFile.fromPath('avatar', filePath));
     final streamed = await req.send();
     return streamed.statusCode == 200;
+  }
+
+  Future<void> _notifyAssignments(List<ServiceRequest> requests) async {
+    try {
+      if (requests.isEmpty) return;
+      final prefs = await SharedPreferences.getInstance();
+      final seen = prefs.getStringList('fixer_seen_request_ids')?.toSet() ?? <String>{};
+      final newIds = <String>[];
+
+      for (final req in requests) {
+        final id = req.id.toString();
+        if (seen.contains(id)) continue;
+        newIds.add(id);
+
+        final service = req.service.name;
+        final scheduled = req.scheduledAt != null
+            ? DateFormat('d MMM HH:mm').format(req.scheduledAt!.toLocal())
+            : null;
+        final body = scheduled != null ? '$service • $scheduled' : service;
+
+        await LocalNotificationService.instance.showInstant(
+          id: req.id,
+          title: 'New service request',
+          body: body,
+          payload: 'fixer_request:${req.id}',
+        );
+      }
+
+      if (newIds.isNotEmpty) {
+        seen.addAll(newIds);
+        await prefs.setStringList('fixer_seen_request_ids', seen.toList());
+      }
+    } catch (_) {
+      // Ignore notification errors to keep UX smooth.
+    }
   }
 }

@@ -18,7 +18,8 @@ class DashboardScreen extends StatefulWidget {
 
 enum _RequestSheetResult { accepted, declined, purchase }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen>
+    with WidgetsBindingObserver {
   final _api = ApiClient.I;
   final _notifications = NotificationsService();
   final _fixer = FixerService();
@@ -28,8 +29,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _future = _load();
     _startPolling();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refreshDashboard();
+      _startPolling();
+    }
+  }
+
+  Future<void> _refreshDashboard() {
+    final future = _load();
+    setState(() => _future = future);
+    return future;
   }
 
   Future<_DashboardData> _load() async {
@@ -151,7 +173,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String? _resolveImage(String? raw) {
     if (raw == null) return null;
     final trimmed = raw.trim();
-    if (trimmed.isEmpty) return null;
+    if (trimmed.isEmpty || trimmed.toLowerCase() == 'null') return null;
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
       return trimmed;
     }
@@ -249,8 +271,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (!mounted) return;
         setState(() {
           _coins = ((w['coin_balance'] ?? w['coins'] ?? 0) as num).toInt();
-          _future = _load();
         });
+        _refreshDashboard();
         break;
       case _RequestSheetResult.purchase:
         await Navigator.pushNamed(context, '/subscriptions');
@@ -283,14 +305,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
               .length;
           return SafeArea(
             child: RefreshIndicator(
-              onRefresh: () async => setState(() => _future = _load()),
+              onRefresh: _refreshDashboard,
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
                   _HeaderCard(
                     data: data,
-                    onNotificationsTap: () =>
-                        Navigator.pushNamed(context, '/notifications'),
+                    onNotificationsTap: () async {
+                      await Navigator.pushNamed(context, '/notifications');
+                      if (mounted) _refreshDashboard();
+                    },
                   ),
                   const SizedBox(height: 16),
                   _StatRow(
@@ -431,11 +455,6 @@ class _HeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const brand = Color(0xFFF1592A);
-    final avatarProvider =
-        (data.avatarUrl != null && data.avatarUrl!.isNotEmpty)
-        ? NetworkImage(data.avatarUrl!) as ImageProvider
-        : const AssetImage('assets/images/logo-sm.png');
-
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -459,14 +478,7 @@ class _HeaderCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundColor: Colors.white,
-                child: CircleAvatar(
-                  radius: 24,
-                  backgroundImage: avatarProvider,
-                ),
-              ),
+              _DashboardAvatar(url: data.avatarUrl, radius: 26),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -582,6 +594,64 @@ class _HeaderCard extends StatelessWidget {
   }
 }
 
+class _DashboardAvatar extends StatefulWidget {
+  final String? url;
+  final double radius;
+
+  const _DashboardAvatar({required this.url, required this.radius});
+
+  @override
+  State<_DashboardAvatar> createState() => _DashboardAvatarState();
+}
+
+class _DashboardAvatarState extends State<_DashboardAvatar> {
+  bool _failed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final innerRadius = widget.radius - 2;
+    final placeholder = ClipOval(
+      child: Image.asset(
+        'assets/images/logo-sm.png',
+        width: innerRadius * 2,
+        height: innerRadius * 2,
+        fit: BoxFit.cover,
+      ),
+    );
+
+    Widget child;
+    final url = widget.url?.trim() ?? '';
+    final validUrl =
+        url.isNotEmpty && url.toLowerCase() != 'null' ? url : '';
+    if (!_failed && validUrl.isNotEmpty) {
+      child = ClipOval(
+        child: Image.network(
+          validUrl,
+          width: innerRadius * 2,
+          height: innerRadius * 2,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) {
+            if (!_failed && mounted) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) setState(() => _failed = true);
+              });
+            }
+            return placeholder;
+          },
+        ),
+      );
+    } else {
+      child = placeholder;
+    }
+
+    return CircleAvatar(
+      radius: widget.radius,
+      backgroundColor: Colors.white,
+      child: child,
+    );
+  }
+}
+
 class _ActionCard extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -655,7 +725,7 @@ class _RequestCard extends StatelessWidget {
     const brand = Color(0xFFF1592A);
     final status = request.status;
     final scheduled = request.scheduledAt != null
-        ? DateFormat('d MMM, h:mm a').format(request.scheduledAt!.toLocal())
+        ? DateFormat('d MMM, HH:mm').format(request.scheduledAt!.toLocal())
         : 'Schedule pending';
     final location = request.location?.isNotEmpty == true
         ? request.location!
@@ -832,7 +902,7 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
     const accent = Color(0xFFFFA26C);
     final scheduled = widget.request.scheduledAt != null
         ? DateFormat(
-            'EEE, d MMM • h:mm a',
+            'EEE, d MMM • HH:mm',
           ).format(widget.request.scheduledAt!.toLocal())
         : null;
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;

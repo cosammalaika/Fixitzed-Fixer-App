@@ -43,7 +43,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _tile(NotificationItem n) {
-    final timeStr = DateFormat('h:mm a').format(n.createdAt);
+    final timeStr = DateFormat('HH:mm').format(n.createdAt);
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 10),
       padding: const EdgeInsets.all(16),

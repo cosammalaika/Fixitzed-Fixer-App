@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../services/api_client.dart';
+import '../../services/local_notification_service.dart';
 
 class BookingDetailScreen extends StatefulWidget {
   const BookingDetailScreen({super.key});
@@ -128,6 +129,30 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
 
   int get _requestId => (_data['id'] as num).toInt();
 
+  String _bookingCode() {
+    final ref = _data['reference'] ?? _data['code'] ?? _data['booking_code'];
+    final result = ref?.toString().trim();
+    if (result == null || result.isEmpty || result == 'null') {
+      return _requestId.toString();
+    }
+    return result;
+  }
+
+  DateTime? _scheduledAt() {
+    final raw = _data['scheduled_at'] ?? _data['scheduledAt'] ?? _data['schedule'];
+    if (raw == null) return null;
+    if (raw is DateTime) return raw;
+    final text = raw.toString();
+    if (text.isEmpty) return null;
+    final parsed = DateTime.tryParse(text);
+    if (parsed != null) return parsed;
+    try {
+      return DateFormat('yyyy-MM-dd HH:mm:ss').parse(text, true).toLocal();
+    } catch (_) {
+      return null;
+    }
+  }
+
   String _status() => (_data['status'] ?? '').toString();
 
   Map<String, dynamic> _mapOf(dynamic raw) {
@@ -152,7 +177,14 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
       message: ok ? 'Request accepted' : 'Failed to accept request',
       success: ok,
     );
-    if (ok) Navigator.of(context).pop(true);
+    if (ok) {
+      LocalNotificationService.instance.notifyJobUpdate(
+        bookingCode: _bookingCode(),
+        status: 'accepted',
+        scheduledAt: _scheduledAt(),
+      );
+      Navigator.of(context).pop(true);
+    }
   }
 
   Future<void> _cancelRequest() async {
@@ -165,7 +197,14 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
       message: ok ? 'Request cancelled' : 'Failed to cancel request',
       success: ok,
     );
-    if (ok) Navigator.of(context).pop(true);
+    if (ok) {
+      LocalNotificationService.instance.notifyJobUpdate(
+        bookingCode: _bookingCode(),
+        status: 'cancelled',
+        scheduledAt: _scheduledAt(),
+      );
+      Navigator.of(context).pop(true);
+    }
   }
 
   Future<void> _sendBill() async {
@@ -180,7 +219,14 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
       message: ok ? 'Bill sent to customer' : 'Failed to create bill',
       success: ok,
     );
-    if (ok) Navigator.of(context).pop(true);
+    if (ok) {
+      LocalNotificationService.instance.notifyJobUpdate(
+        bookingCode: _bookingCode(),
+        status: 'awaiting payment',
+        scheduledAt: _scheduledAt(),
+      );
+      Navigator.of(context).pop(true);
+    }
   }
 
   Future<double?> _promptAmount() async {

@@ -12,10 +12,12 @@ import 'screens/profile/profile_screen.dart';
 import 'screens/profile/edit_profile_screen.dart';
 import 'screens/notifications/notifications_screen.dart';
 import 'screens/home_shell.dart';
+import 'services/local_notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppTheme.load();
+  await LocalNotificationService.instance.init();
   runApp(const FixerApp());
 }
 

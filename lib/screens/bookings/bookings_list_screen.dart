@@ -11,7 +11,7 @@ class BookingsListScreen extends StatefulWidget {
 }
 
 class _BookingsListScreenState extends State<BookingsListScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late final TabController _tab;
   final _fixer = FixerService();
   bool _loading = true;
@@ -19,15 +19,19 @@ class _BookingsListScreenState extends State<BookingsListScreen>
   List<ServiceRequest> _accepted = [];
   List<ServiceRequest> _completed = [];
   List<ServiceRequest> _declined = [];
+  bool _refreshing = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _tab = TabController(length: 4, vsync: this);
     _load();
   }
 
   Future<void> _load() async {
+    if (_refreshing) return;
+    _refreshing = true;
     setState(() => _loading = true);
     try {
       final p = await _fixer.requests(status: 'pending');
@@ -43,13 +47,22 @@ class _BookingsListScreenState extends State<BookingsListScreen>
       });
     } finally {
       if (mounted) setState(() => _loading = false);
+      _refreshing = false;
     }
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _tab.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _load();
+    }
   }
 
   @override
