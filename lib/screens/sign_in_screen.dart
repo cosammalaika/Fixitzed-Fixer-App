@@ -147,16 +147,59 @@ class _SignInScreenState extends State<SignInScreen> {
               return Stack(
                 children: [
                   Container(
-                    height: constraints.maxHeight * 0.36,
-                    decoration: BoxDecoration(color: Colors.grey.shade900),
+                    height: constraints.maxHeight * 0.43,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF111111), Color(0xFF1F1F1F)],
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                      ),
+                    ),
                   ),
                   Positioned(
                     top: 70,
-                    right: 16,
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      height: 50,
-                      fit: BoxFit.contain,
+                    left: 20,
+                    right: 20,
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.engineering_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'FixitZed Fixer',
+                              style: GoogleFonts.urbanist(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              'Stay on top of bookings & schedules',
+                              style: GoogleFonts.urbanist(
+                                color: Colors.white.withOpacity(0.7),
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Spacer(),
+                        Image.asset(
+                          'assets/images/logo.png',
+                          height: 40,
+                          fit: BoxFit.contain,
+                        ),
+                      ],
                     ),
                   ),
                   SingleChildScrollView(
@@ -164,20 +207,49 @@ class _SignInScreenState extends State<SignInScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 150),
+                        const SizedBox(height: 132),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.handyman_rounded,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Welcome back',
+                                style: GoogleFonts.urbanist(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
                         Text(
-                          'Welcome back!',
+                          'Sign in to manage your jobs',
                           style: GoogleFonts.urbanist(
                             color: Colors.white,
-                            fontSize: 28,
+                            fontSize: 26,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Login to your account',
+                          'Access bookings, payments and daily tasks in one place.',
                           style: GoogleFonts.urbanist(
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withOpacity(0.75),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -451,14 +523,28 @@ class _SignInScreenState extends State<SignInScreen> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 12),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Text(
-                                      'Don’t have an account ? ',
+                                      'Don\'t have an account? ',
                                       style: GoogleFonts.urbanist(
                                         color: Theme.of(context).hintColor,
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: _loading
+                                          ? null
+                                          : () => Navigator.of(
+                                              context,
+                                            ).pushNamed('/becomeFixer'),
+                                      child: Text(
+                                        'Apply as a fixer',
+                                        style: GoogleFonts.urbanist(
+                                          fontWeight: FontWeight.w700,
+                                          color: orange,
+                                        ),
                                       ),
                                     ),
                                   ],

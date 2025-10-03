@@ -220,8 +220,24 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   context: context,
                   isScrollControlled: true,
                   useSafeArea: true,
-                  backgroundColor: Colors.transparent,
-                  builder: (ctx) => SubscriptionCheckoutSheet(plan: p),
+                  barrierColor: Colors.black.withOpacity(0.45),
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(24),
+                    ),
+                  ),
+                  builder: (ctx) => Padding(
+                    padding: EdgeInsets.only(
+                      bottom: MediaQuery.of(ctx).viewInsets.bottom,
+                    ),
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(24),
+                      ),
+                      child: SubscriptionCheckoutSheet(plan: p),
+                    ),
+                  ),
                 );
                 if (purchased == true) {
                   if (!mounted) return;
