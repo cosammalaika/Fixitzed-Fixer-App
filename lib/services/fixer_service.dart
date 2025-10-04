@@ -45,6 +45,11 @@ class FixerService {
         .map(ServiceRequest.fromJson)
         .toList();
     unawaited(_notifyAssignments(requests));
+    if (status == 'declined') {
+      for (final req in requests) {
+        _declinedCache[req.id] = req.toJson();
+      }
+    }
     return requests;
   }
 
@@ -100,19 +105,69 @@ class FixerService {
     return res.statusCode >= 200 && res.statusCode < 300;
   }
 
+  Future<Map<String, dynamic>> declineRequest(int id) async {
+    final res = await _api.post('/api/fixer/requests/$id/decline', body: {});
+    final body = _decodeBody(res);
+    final successFlag =
+        res.statusCode >= 200 && res.statusCode < 300 && (body['success'] ?? true) == true;
+    return {
+      'success': successFlag,
+      'message': body['message']?.toString(),
+      'data': body['data'],
+    };
+  }
+
+  Future<bool> snoozeRequest(int id) async {
+    final res = await _api.post('/api/fixer/requests/$id/snooze', body: {});
+    return res.statusCode >= 200 && res.statusCode < 300;
+  }
+
   // Fetch a single request detail (may include contact info)
   Future<Map<String, dynamic>?> requestDetail(int id) async {
     final res = await _api.get('/api/requests/$id');
-    if (res.statusCode != 200) return null;
-    final root = jsonDecode(res.body);
-    if (root is Map<String, dynamic>) {
-      // Prefer data if exists
-      if (root['data'] is Map<String, dynamic>) {
-        return Map<String, dynamic>.from(root['data'] as Map);
+    if (res.statusCode == 200) {
+      final root = jsonDecode(res.body);
+      if (root is Map<String, dynamic>) {
+        if (root['data'] is Map<String, dynamic>) {
+          return Map<String, dynamic>.from(root['data'] as Map);
+        }
+        return Map<String, dynamic>.from(root);
       }
-      return Map<String, dynamic>.from(root);
     }
+
+    final declined = _declinedCache[id];
+    if (declined != null) {
+      final data = Map<String, dynamic>.from(declined);
+      data['status'] = 'declined';
+      return data;
+    }
+
     return null;
+  }
+
+  final Map<int, Map<String, dynamic>> _declinedCache = {};
+
+  /// Fetch wallet ledger entries with optional filters.
+  Future<List<Map<String, dynamic>>> walletHistory({String? filter}) async {
+    final res = await _api.get('/api/fixer/wallet/history', query: {
+      if (filter != null && filter.isNotEmpty) 'filter': filter,
+    });
+    if (res.statusCode != 200) return const [];
+    final decoded = jsonDecode(res.body);
+    List raw;
+    if (decoded is Map<String, dynamic>) {
+      final data = decoded['data'];
+      if (data is List) {
+        raw = data;
+      } else {
+        raw = [];
+      }
+    } else if (decoded is List) {
+      raw = decoded;
+    } else {
+      raw = [];
+    }
+    return raw.whereType<Map<String, dynamic>>().toList();
   }
 
   Future<bool> createPayment(int id, double amount) async {
@@ -191,5 +246,13 @@ class FixerService {
     } catch (_) {
       // Ignore notification errors to keep UX smooth.
     }
+  }
+
+  Map<String, dynamic> _decodeBody(http.Response res) {
+    try {
+      final data = jsonDecode(res.body);
+      if (data is Map<String, dynamic>) return data;
+    } catch (_) {}
+    return {};
   }
 }

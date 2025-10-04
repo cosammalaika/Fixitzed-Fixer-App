@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/notifications_service.dart';
 import '../services/fixer_service.dart';
 import '../models/service_request.dart';
+import '../config.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -18,8 +19,7 @@ class DashboardScreen extends StatefulWidget {
 
 enum _RequestSheetResult { accepted, declined, purchase }
 
-class _DashboardScreenState extends State<DashboardScreen>
-    with WidgetsBindingObserver {
+class _DashboardScreenState extends State<DashboardScreen> {
   final _api = ApiClient.I;
   final _notifications = NotificationsService();
   final _fixer = FixerService();
@@ -29,23 +29,13 @@ class _DashboardScreenState extends State<DashboardScreen>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _future = _load();
     _startPolling();
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _refreshDashboard();
-      _startPolling();
-    }
   }
 
   Future<void> _refreshDashboard() {
@@ -92,6 +82,7 @@ class _DashboardScreenState extends State<DashboardScreen>
 
     // Parse wallet coins left
     int coins = 0;
+    double earnings = 0;
     try {
       if (walletRes.statusCode == 200) {
         final root = jsonDecode(walletRes.body);
@@ -104,6 +95,11 @@ class _DashboardScreenState extends State<DashboardScreen>
             m = Map<String, dynamic>.from(root as Map);
           }
           coins = ((m['coin_balance'] ?? m['coins'] ?? 0) as num).toInt();
+          final total = m['total_earnings'] ?? m['earnings_total'] ?? m['total'];
+          if (total is num) earnings = total.toDouble();
+          if (total is String) {
+            earnings = double.tryParse(total) ?? earnings;
+          }
         }
       }
     } catch (_) {}
@@ -163,6 +159,7 @@ class _DashboardScreenState extends State<DashboardScreen>
       notificationsUnread: unread,
       requests: requests,
       coins: coins,
+      totalEarnings: earnings,
       completedCount: completedCount,
       name: name,
       avatarUrl: avatarUrl,
@@ -172,17 +169,8 @@ class _DashboardScreenState extends State<DashboardScreen>
 
   String? _resolveImage(String? raw) {
     if (raw == null) return null;
-    final trimmed = raw.trim();
-    if (trimmed.isEmpty || trimmed.toLowerCase() == 'null') return null;
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed;
-    }
-    var origin = _api.baseUrl;
-    if (origin.endsWith('/api')) {
-      origin = origin.substring(0, origin.length - 4);
-    }
-    final path = trimmed.startsWith('/') ? trimmed.substring(1) : trimmed;
-    return '$origin/$path';
+    final resolved = resolveMediaUrl(raw);
+    return resolved.isEmpty ? null : resolved;
   }
 
   // Polling for new requests and prompt fixer
@@ -383,6 +371,7 @@ class _DashboardData {
   final int notificationsUnread;
   final List<ServiceRequest> requests;
   final int coins;
+  final double totalEarnings;
   final int completedCount;
   final String name;
   final String? avatarUrl;
@@ -391,6 +380,7 @@ class _DashboardData {
     required this.notificationsUnread,
     required this.requests,
     required this.coins,
+    required this.totalEarnings,
     required this.completedCount,
     required this.name,
     required this.avatarUrl,
@@ -400,6 +390,7 @@ class _DashboardData {
     notificationsUnread: 0,
     requests: const [],
     coins: 0,
+    totalEarnings: 0,
     completedCount: 0,
     name: '',
     avatarUrl: null,
@@ -455,6 +446,7 @@ class _HeaderCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const brand = Color(0xFFF1592A);
+    final currency = NumberFormat.currency(symbol: 'K', decimalDigits: 2);
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -586,6 +578,78 @@ class _HeaderCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(18),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: () => Navigator.of(context).pushNamed('/wallet/transactions', arguments: data.totalEarnings),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: const BoxDecoration(
+                        color: Color(0x33FFFFFF),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.payments_outlined, color: Colors.white),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Total Earnings',
+                                  style: GoogleFonts.urbanist(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                color: Colors.white.withOpacity(0.6),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            data.totalEarnings > 0
+                                ? 'Great job! Keep the momentum going.'
+                                : 'Complete jobs to start earning.',
+                            style: GoogleFonts.urbanist(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      currency.format(data.totalEarnings),
+                      style: GoogleFonts.urbanist(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],

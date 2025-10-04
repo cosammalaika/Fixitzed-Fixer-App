@@ -6,7 +6,9 @@ class ServiceRequest {
   final Customer customer;
   final Fixer? fixer;
   final DateTime? scheduledAt;
-  final String status; // pending|accepted|ongoing|completed|cancelled
+  final DateTime? declinedAt;
+  final DateTime? snoozedUntil;
+  final String status; // pending|accepted|ongoing|completed|cancelled|declined
   final String? location;
   final String? customerContact;
   final bool customerContactVisible;
@@ -17,6 +19,8 @@ class ServiceRequest {
     required this.customer,
     required this.fixer,
     required this.scheduledAt,
+    required this.declinedAt,
+    required this.snoozedUntil,
     required this.status,
     required this.location,
     required this.customerContact,
@@ -88,11 +92,33 @@ class ServiceRequest {
       scheduledAt: (scheduledRaw is String && scheduledRaw.isNotEmpty)
           ? DateTime.tryParse(scheduledRaw)
           : null,
+      declinedAt: (j['declined_at'] is String)
+          ? DateTime.tryParse(j['declined_at'])
+          : null,
+      snoozedUntil: (j['fixer_snoozed_until'] is String)
+          ? DateTime.tryParse(j['fixer_snoozed_until'])
+          : null,
       status: status,
       location: loc,
       customerContact: contact,
       customerContactVisible: contactVisible,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'service': service.toJson(),
+      'customer': customer.toJson(),
+      'fixer': fixer?.toJson(),
+      'scheduled_at': scheduledAt?.toIso8601String(),
+      'declined_at': declinedAt?.toIso8601String(),
+      'fixer_snoozed_until': snoozedUntil?.toIso8601String(),
+      'status': status,
+      'location': location,
+      'customer_contact': customerContact,
+      'customer_contact_visible': customerContactVisible,
+    };
   }
 }
 
@@ -113,4 +139,9 @@ class Customer {
     final name = (j['name'] ?? j['full_name'] ?? combined).toString().trim();
     return Customer(id: parseId(j['id']), name: name);
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+      };
 }

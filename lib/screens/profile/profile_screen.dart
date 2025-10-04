@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../services/auth_service.dart';
 import '../../services/api_client.dart';
 import '../../services/report_service.dart';
+import '../../config.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -38,18 +40,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String _resolveImage(String? raw) {
     if (raw == null) return '';
-    final trimmed = raw.trim();
-    if (trimmed.isEmpty || trimmed.toLowerCase() == 'null') return '';
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed;
-    }
-    var origin = ApiClient.I.baseUrl;
-    if (origin.endsWith('/api'))
-      origin = origin.substring(0, origin.length - 4);
-    final path = trimmed.startsWith('/') ? trimmed.substring(1) : trimmed;
-    return path.startsWith('storage/')
-        ? '$origin/$path'
-        : '$origin/storage/$path';
+    final resolved = resolveMediaUrl(raw);
+    return resolved;
   }
 
   Widget _menuItem(
@@ -57,44 +49,50 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String label, {
     VoidCallback? onTap,
     Color? iconColor,
+    bool showDivider = true,
   }) {
-    return InkWell(
+    const brand = Color(0xFFF1592A);
+    final tile = InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 8),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8EEE8),
-          borderRadius: BorderRadius.circular(20),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0x1AF1592A),
+                gradient: const LinearGradient(
+                  colors: [Color(0x1AF1592A), Color(0x33F1592A)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(icon, color: iconColor ?? const Color(0xFFF1592A)),
+              child: Icon(icon, color: iconColor ?? brand),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Text(
                 label,
                 style: GoogleFonts.urbanist(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
+                  color: const Color(0xFF1F1F1F),
                 ),
               ),
             ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: Theme.of(context).hintColor,
-            ),
+            Icon(Icons.chevron_right_rounded, color: Colors.black26),
           ],
         ),
       ),
+    );
+    return Column(
+      children: [
+        tile,
+        if (showDivider)
+          const Divider(height: 1, thickness: 1, color: Color(0xFFF2F2F2)),
+      ],
     );
   }
 
@@ -295,11 +293,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ?.toString(),
     );
     final email = (user['email'] ?? '').toString();
+    final location = ((user['address'] ?? user['location']) ?? '')
+        .toString()
+        .trim();
 
     return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      backgroundColor: const Color(0xFFF9F4F1),
       appBar: AppBar(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         iconTheme: IconThemeData(
@@ -316,77 +317,181 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      _ProfileAvatar(url: avatar, radius: 32),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFF1592A), Color(0xFFFF8A5C)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFF1592A).withOpacity(0.22),
+                          blurRadius: 24,
+                          offset: const Offset(0, 16),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
                           children: [
-                            Text(
-                              name.isEmpty ? '—' : name,
-                              style: GoogleFonts.urbanist(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 22,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              email,
-                              style: GoogleFonts.urbanist(
-                                color: Theme.of(context).hintColor,
+                            _ProfileAvatar(url: avatar, radius: 36),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    name.isEmpty ? 'Welcome Fixer' : name,
+                                    style: GoogleFonts.urbanist(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 22,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    email.isEmpty ? 'No email on file' : email,
+                                    style: GoogleFonts.urbanist(
+                                      color: Colors.white.withOpacity(0.8),
+                                    ),
+                                  ),
+                                  if (location.isNotEmpty) ...[
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.place_outlined,
+                                          size: 16,
+                                          color: Colors.white.withOpacity(0.8),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            location,
+                                            style: GoogleFonts.urbanist(
+                                              color: Colors.white.withOpacity(
+                                                0.8,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 18),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.18),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.verified_user_rounded,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Text(
+                                  'Keep your profile updated to attract more service requests.',
+                                  style: GoogleFonts.urbanist(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  Divider(color: Theme.of(context).dividerColor, height: 24),
-
-                  _menuItem(
-                    Icons.edit_rounded,
-                    'Edit Profile',
-                    onTap: () async {
-                      final res = await Navigator.pushNamed(
-                        context,
-                        '/profile/edit',
-                      );
-                      if (res == true) _load();
-                    },
-                  ),
-                  _menuItem(
-                    Icons.work_history_rounded,
-                    'My Bookings',
-                    onTap: () => Navigator.pushNamed(context, '/bookings'),
-                  ),
-                  _menuItem(
-                    Icons.credit_card_rounded,
-                    'Subscription Plans',
-                    onTap: () => Navigator.pushNamed(context, '/subscriptions'),
-                  ),
-                  _menuItem(
-                    Icons.flag_outlined,
-                    'Report a User',
-                    onTap: () => _showReportSheet(type: 'user'),
-                  ),
-                  _menuItem(
-                    Icons.logout_rounded,
-                    'Logout',
-                    iconColor: Colors.red,
-                    onTap: () async {
-                      await AuthService().logout();
-                      if (!mounted) return;
-                      Navigator.of(
-                        context,
-                      ).pushNamedAndRemoveUntil('/signin', (r) => false);
-                    },
+                  const SizedBox(height: 28),
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 18,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        _menuItem(
+                          Icons.edit_rounded,
+                          'Edit Profile',
+                          onTap: () async {
+                            final res = await Navigator.pushNamed(
+                              context,
+                              '/profile/edit',
+                            );
+                            if (res == true) _load();
+                          },
+                        ),
+                        _menuItem(
+                          Icons.work_history_rounded,
+                          'My Bookings',
+                          onTap: () =>
+                              Navigator.pushNamed(context, '/bookings'),
+                        ),
+                        _menuItem(
+                          Icons.credit_card_rounded,
+                          'Subscription Plans',
+                          onTap: () =>
+                              Navigator.pushNamed(context, '/subscriptions'),
+                        ),
+                        _menuItem(
+                          Icons.flag_outlined,
+                          'Report a User',
+                          onTap: () => _showReportSheet(type: 'user'),
+                        ),
+                        _menuItem(
+                          Icons.logout_rounded,
+                          'Logout',
+                          iconColor: Colors.red,
+                          showDivider: false,
+                          onTap: () async {
+                            await AuthService().logout();
+                            if (!mounted) return;
+                            Navigator.of(
+                              context,
+                            ).pushNamedAndRemoveUntil('/signin', (r) => false);
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

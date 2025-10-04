@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import '../../services/fixer_service.dart';
 import '../../models/service_request.dart';
 
@@ -11,7 +12,7 @@ class BookingsListScreen extends StatefulWidget {
 }
 
 class _BookingsListScreenState extends State<BookingsListScreen>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with SingleTickerProviderStateMixin {
   late final TabController _tab;
   final _fixer = FixerService();
   bool _loading = true;
@@ -24,7 +25,6 @@ class _BookingsListScreenState extends State<BookingsListScreen>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     _tab = TabController(length: 4, vsync: this);
     _load();
   }
@@ -37,7 +37,7 @@ class _BookingsListScreenState extends State<BookingsListScreen>
       final p = await _fixer.requests(status: 'pending');
       final a = await _fixer.requests(status: 'accepted');
       final c = await _fixer.requests(status: 'completed');
-      final d = await _fixer.requests(status: 'cancelled');
+      final d = await _fixer.requests(status: 'declined');
       if (!mounted) return;
       setState(() {
         _pending = p;
@@ -53,16 +53,8 @@ class _BookingsListScreenState extends State<BookingsListScreen>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _tab.dispose();
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _load();
-    }
   }
 
   @override
@@ -201,7 +193,13 @@ class _BookingsListScreenState extends State<BookingsListScreen>
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 6))],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
             border: Border.all(color: const Color(0x1AF1592A)),
           ),
           child: InkWell(
@@ -231,6 +229,22 @@ class _BookingsListScreenState extends State<BookingsListScreen>
                         '${r.customer.name}${r.location != null ? ' • ${r.location}' : ''}',
                         style: GoogleFonts.urbanist(color: Theme.of(context).hintColor),
                       ),
+                      if (r.declinedAt != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            'Declined: ${DateFormat('d MMM • HH:mm').format(r.declinedAt!.toLocal())}',
+                            style: GoogleFonts.urbanist(color: Theme.of(context).hintColor),
+                          ),
+                        )
+                      else if (r.scheduledAt != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            'Scheduled: ${DateFormat('d MMM • HH:mm').format(r.scheduledAt!.toLocal())}',
+                            style: GoogleFonts.urbanist(color: Theme.of(context).hintColor),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -263,6 +277,10 @@ class _BookingsListScreenState extends State<BookingsListScreen>
         bg = Colors.blue.withOpacity(0.12);
         fg = Colors.blue;
         break;
+      case 'declined':
+        bg = Colors.red.withOpacity(0.12);
+        fg = Colors.red.shade700;
+        break;
       default:
         bg = Colors.grey.withOpacity(0.15);
         fg = Colors.grey.shade700;
@@ -271,7 +289,13 @@ class _BookingsListScreenState extends State<BookingsListScreen>
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
       child: Text(
-        status == 'awaiting_payment' ? 'Awaiting Payment' : status,
+        status == 'awaiting_payment'
+            ? 'Awaiting Payment'
+            : status == 'declined'
+                ? 'Declined'
+                : status.isNotEmpty
+                    ? '${status[0].toUpperCase()}${status.substring(1)}'
+                    : status,
         style: TextStyle(color: fg, fontWeight: FontWeight.w600),
       ),
     );

@@ -124,6 +124,7 @@ class _FixerBookingSheet extends StatefulWidget {
 
 class _FixerBookingSheetState extends State<_FixerBookingSheet> {
   bool _processing = false;
+  bool _snoozing = false;
 
   Map<String, dynamic> get _data => widget.detail;
 
@@ -140,17 +141,33 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
 
   DateTime? _scheduledAt() {
     final raw = _data['scheduled_at'] ?? _data['scheduledAt'] ?? _data['schedule'];
+    return _parseDate(raw);
+  }
+
+  DateTime? _parseDate(dynamic raw) {
     if (raw == null) return null;
-    if (raw is DateTime) return raw;
-    final text = raw.toString();
-    if (text.isEmpty) return null;
+    if (raw is DateTime) return raw.toLocal();
+    final text = raw.toString().trim();
+    if (text.isEmpty || text.toLowerCase() == 'null') return null;
     final parsed = DateTime.tryParse(text);
-    if (parsed != null) return parsed;
-    try {
-      return DateFormat('yyyy-MM-dd HH:mm:ss').parse(text, true).toLocal();
-    } catch (_) {
-      return null;
+    if (parsed != null) return parsed.toLocal();
+    for (final pattern in const [
+      'yyyy-MM-dd HH:mm:ss',
+      "yyyy-MM-dd'T'HH:mm:ss.SSSZ",
+      "yyyy-MM-dd'T'HH:mm:ssZ",
+      'yyyy-MM-dd HH:mm',
+    ]) {
+      try {
+        return DateFormat(pattern).parse(text, true).toLocal();
+      } catch (_) {}
     }
+    return null;
+  }
+
+  String? _formatDateTime(dynamic raw) {
+    final dt = _parseDate(raw);
+    if (dt == null) return null;
+    return DateFormat('d MMM yyyy • HH:mm').format(dt);
   }
 
   String _status() => (_data['status'] ?? '').toString();
@@ -189,22 +206,39 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
 
   Future<void> _cancelRequest() async {
     await _setProcessing(true);
-    final ok = await widget.fixerService.updateStatus(_requestId, 'cancelled');
+    final result = await widget.fixerService.declineRequest(_requestId);
     await _setProcessing(false);
     if (!mounted) return;
+    final ok = result['success'] == true;
+    final msg = (result['message'] as String?)?.trim();
     AppSnack.show(
       context,
-      message: ok ? 'Request cancelled' : 'Failed to cancel request',
+      message: ok
+          ? (msg != null && msg.isNotEmpty ? msg : 'Request declined')
+          : (msg != null && msg.isNotEmpty ? msg : 'Failed to decline request'),
       success: ok,
     );
     if (ok) {
       LocalNotificationService.instance.notifyJobUpdate(
         bookingCode: _bookingCode(),
-        status: 'cancelled',
+        status: 'declined',
         scheduledAt: _scheduledAt(),
       );
       Navigator.of(context).pop(true);
     }
+  }
+
+  Future<void> _snoozeRequest() async {
+    setState(() => _snoozing = true);
+    final ok = await widget.fixerService.snoozeRequest(_requestId);
+    setState(() => _snoozing = false);
+    if (!mounted) return;
+    AppSnack.show(
+      context,
+      message: ok ? 'We will remind you again in an hour.' : 'Unable to snooze this request.',
+      success: ok,
+    );
+    if (ok) Navigator.of(context).pop(true);
   }
 
   Future<void> _sendBill() async {
@@ -442,9 +476,9 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     final service = _mapOf(_data['service']);
     final customer = _mapOf(_data['customer']);
     final title = (service['name'] ?? service['title'] ?? 'Service').toString();
-    final scheduled =
-        (_data['scheduled_at'] ?? _data['scheduledAt'] ?? _data['schedule'])
-            ?.toString();
+    final scheduled = _formatDateTime(
+      _data['scheduled_at'] ?? _data['scheduledAt'] ?? _data['schedule'],
+    );
     final location = (_data['location'] ?? '').toString();
     final status = _status();
     final contactVisible = (_data['customer_contact_visible'] == true);
@@ -745,7 +779,8 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     final lower = status.toLowerCase();
     final canAccept = lower == 'pending';
     final canSendBill = lower == 'accepted';
-    final canCancel = lower != 'completed';
+    final canDecline = lower != 'completed';
+    final canSnooze = lower == 'pending';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -781,10 +816,22 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
-          onPressed: _processing || !canCancel ? null : _cancelRequest,
+          onPressed: _processing || _snoozing || !canSnooze ? null : _snoozeRequest,
+          icon: const Icon(Icons.schedule_rounded),
+          label: Text(_snoozing ? 'Snoozing…' : 'Accept later'),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: _processing || !canDecline ? null : _cancelRequest,
           icon: const Icon(Icons.cancel_outlined),
           label: Text(
-            _processing && canCancel ? 'Processing…' : 'Cancel booking',
+            _processing && canDecline ? 'Processing…' : 'Decline request',
           ),
           style: OutlinedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 14),

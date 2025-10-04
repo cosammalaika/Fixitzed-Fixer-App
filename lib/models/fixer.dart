@@ -25,6 +25,15 @@ class Fixer {
             .map((e) => Service.fromJson(e as Map<String, dynamic>))
             .toList(),
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'user': user.toJson(),
+        'bio': bio,
+        'availability': availability,
+        'rating_avg': ratingAvg,
+        'services': services.map((s) => s.toJson()).toList(),
+      };
 }
 
 class User {
@@ -49,6 +58,14 @@ class User {
         email: j['email'] as String,
         profilePhotoUrl: j['profile_photo_url'] as String?,
       );
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'first_name': firstName,
+        'last_name': lastName,
+        'email': email,
+        'profile_photo_url': profilePhotoUrl,
+      };
 }
 
 class Service {
@@ -63,5 +80,10 @@ class Service {
         name: j['name'] as String,
         price: j['price'] == null ? null : (j['price'] as num).toDouble(),
       );
-}
 
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'price': price,
+      };
+}
