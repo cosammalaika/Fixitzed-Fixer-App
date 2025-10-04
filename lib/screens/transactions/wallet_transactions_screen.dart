@@ -160,17 +160,45 @@ class _WalletTransactionsScreenState extends State<WalletTransactionsScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      Text(
-                                        _dateFmt.format(entry.createdAt),
-                                        style: GoogleFonts.urbanist(
-                                          color: Colors.black54,
-                                          fontSize: 12,
+                                  Text(
+                                    _dateFmt.format(entry.createdAt),
+                                    style: GoogleFonts.urbanist(
+                                      color: Colors.black54,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Wrap(
+                                    crossAxisAlignment: WrapCrossAlignment.center,
+                                    spacing: 8,
+                                    runSpacing: 4,
+                                    children: [
+                                      if (entry.paymentMethod?.isNotEmpty == true)
+                                        _InfoChip(
+                                          icon: Icons.account_balance_wallet_outlined,
+                                          label: entry.paymentMethod!,
                                         ),
-                                      ),
-                                      if (entry.note?.isNotEmpty == true) ...[
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          entry.note!,
+                                      if (entry.transactionId?.isNotEmpty == true)
+                                        _InfoChip(
+                                          icon: Icons.tag_outlined,
+                                          label: entry.transactionId!,
+                                        ),
+                                      if (entry.serviceName?.isNotEmpty == true)
+                                        _InfoChip(
+                                          icon: Icons.home_repair_service_rounded,
+                                          label: entry.serviceName!,
+                                        ),
+                                      if (entry.scheduledAt != null)
+                                        _InfoChip(
+                                          icon: Icons.calendar_month_rounded,
+                                          label: DateFormat('dd MMM').format(entry.scheduledAt!),
+                                        ),
+                                    ],
+                                  ),
+                                  if (entry.note?.isNotEmpty == true) ...[
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      entry.note!,
                                           style: GoogleFonts.urbanist(fontSize: 13),
                                         ),
                                       ],
@@ -282,7 +310,10 @@ class _WalletEntry {
   final String? title;
   final String? note;
   final DateTime createdAt;
-  final String? type;
+  final String? paymentMethod;
+  final String? transactionId;
+  final String? serviceName;
+  final DateTime? scheduledAt;
 
   _WalletEntry({
     required this.id,
@@ -290,20 +321,58 @@ class _WalletEntry {
     this.title,
     this.note,
     required this.createdAt,
-    this.type,
+    this.paymentMethod,
+    this.transactionId,
+    this.serviceName,
+    this.scheduledAt,
   });
 
   factory _WalletEntry.fromJson(Map json) {
-    final created = json['created_at'] ?? json['createdAt'] ?? DateTime.now().toIso8601String();
+    final created = json['paid_at'] ?? json['created_at'] ?? json['createdAt'] ?? DateTime.now().toIso8601String();
     return _WalletEntry(
       id: (json['id'] ?? 0) as int,
       amount: (json['amount'] is num)
           ? (json['amount'] as num).toDouble()
           : double.tryParse(json['amount']?.toString() ?? ''),
-      title: json['title']?.toString() ?? json['description']?.toString(),
-      note: json['note']?.toString() ?? json['message']?.toString(),
+      title: json['title']?.toString() ?? json['service_name']?.toString() ?? json['description']?.toString(),
+      note: json['note']?.toString() ?? json['message']?.toString() ?? json['location']?.toString(),
       createdAt: DateTime.tryParse(created.toString()) ?? DateTime.now(),
-      type: json['type']?.toString(),
+      paymentMethod: json['payment_method']?.toString(),
+      transactionId: json['transaction_id']?.toString(),
+      serviceName: json['service_name']?.toString(),
+      scheduledAt: DateTime.tryParse(json['scheduled_at']?.toString() ?? ''),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _InfoChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3F5F7),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: const Color(0xFF5B5B5B)),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: GoogleFonts.urbanist(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF5B5B5B),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
