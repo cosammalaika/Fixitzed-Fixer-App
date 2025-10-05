@@ -68,8 +68,8 @@ class _SignInScreenState extends State<SignInScreen> {
           if (root is Map<String, dynamic>) {
             final u = (root['user'] ?? root['data']) as Map<String, dynamic>?;
             if (u != null) {
-              final type = (u['user_type'] ?? u['type'] ?? '').toString();
-              isFixer = type.toLowerCase() == 'fixer';
+              final roles = _collectRoles(u);
+              isFixer = roles.any((role) => role.toLowerCase() == 'fixer');
             }
           }
         }
@@ -78,8 +78,8 @@ class _SignInScreenState extends State<SignInScreen> {
           // Clear token and inform the user
           await ApiClient.I.setToken(null);
           _showAlert(
-            'Not a Fixer',
-            'Sorry, you are not a fixer. Sign up to become one.',
+            'Fixer Account Required',
+            'This login is only for approved FixitZED Fixers. Open the customer app to apply to become a fixer, then return once you are approved.',
           );
           return;
         }
@@ -100,6 +100,39 @@ class _SignInScreenState extends State<SignInScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Set<String> _collectRoles(Map<String, dynamic> payload) {
+    final roles = <String>{};
+
+    void addRole(dynamic value) {
+      if (value is String && value.trim().isNotEmpty) {
+        roles.add(value.trim());
+      }
+    }
+
+    addRole(payload['primary_role']);
+    addRole(payload['primaryRole']);
+
+    final directRoles = payload['roles'];
+    if (directRoles is List) {
+      for (final entry in directRoles) {
+        if (entry is Map && entry['name'] is String) {
+          addRole(entry['name'] as String);
+        } else {
+          addRole(entry);
+        }
+      }
+    }
+
+    final roleNames = payload['role_names'] ?? payload['roleNames'];
+    if (roleNames is List) {
+      for (final entry in roleNames) {
+        addRole(entry);
+      }
+    }
+
+    return roles;
   }
 
   Future<void> _showAlert(String title, String message) async {
