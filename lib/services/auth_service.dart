@@ -11,7 +11,7 @@ class AuthService {
     final res = await _api.post('/api/login', body: {
       // Backend can accept email/phone/username under a common key like 'email' or 'identifier'.
       // If your API expects a different key, change 'email' accordingly.
-      'email': identifier,
+      'identifier': identifier,
       'password': password,
     });
     if (res.statusCode == 200) {

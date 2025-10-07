@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import '../../models/service_request.dart';
 import '../../services/api_client.dart';
 import '../../services/fixer_service.dart';
 import '../../services/notifications_service.dart';

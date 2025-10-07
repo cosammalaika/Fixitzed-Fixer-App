@@ -1,35 +1,30 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../services/api_client.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../ui/snack.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/notifications_service.dart';
 import '../services/fixer_service.dart';
 import '../models/service_request.dart';
 import '../config.dart';
+import '../state/dashboard_controller.dart';
+import '../data/models/dashboard_snapshot.dart';
 
-class DashboardScreen extends StatefulWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
 enum _RequestSheetResult { accepted, declined, purchase }
 
-class _DashboardScreenState extends State<DashboardScreen> {
-  final _api = ApiClient.I;
-  final _notifications = NotificationsService();
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   final _fixer = FixerService();
-
-  late Future<_DashboardData> _future;
 
   @override
   void initState() {
     super.initState();
-    _future = _load();
     _startPolling();
   }
 
@@ -39,138 +34,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _refreshDashboard() {
-    final future = _load();
-    setState(() => _future = future);
-    return future;
-  }
-
-  Future<_DashboardData> _load() async {
-    // Parallel fetches of endpoints that exist in your routes
-    // Fetch a small notifications payload to get unread_count meta
-    final notifMetaF = _api.get('/api/notifications', query: {'limit': '1'});
-    final reqF = _api.get('/api/fixer/requests');
-    final walletF = _api.get('/api/fixer/wallet');
-    final meF = _api.get('/api/me');
-
-    final notifMeta = await notifMetaF;
-    final reqRes = await reqF;
-    final walletRes = await walletF;
-    final meRes = await meF;
-
-    // Parse requests (supports paginated and plain list)
-    List<ServiceRequest> requests = [];
-    try {
-      if (reqRes.statusCode == 200) {
-        final root = jsonDecode(reqRes.body);
-        List<dynamic>? list;
-        if (root is List) {
-          list = root;
-        } else if (root is Map) {
-          final data = root['data'];
-          if (data is List) list = data;
-          if (data is Map && data['data'] is List) list = data['data'] as List;
-          list ??=
-              root.values.firstWhere((v) => v is List, orElse: () => const [])
-                  as List;
-        }
-        requests = (list ?? const [])
-            .whereType<Map>()
-            .map((e) => ServiceRequest.fromJson(Map<String, dynamic>.from(e)))
-            .toList();
-      }
-    } catch (_) {}
-
-    // Parse wallet coins left
-    int coins = 0;
-    double earnings = 0;
-    try {
-      if (walletRes.statusCode == 200) {
-        final root = jsonDecode(walletRes.body);
-        Map<String, dynamic> m;
-        if (root is Map) {
-          final d = root['data'];
-          if (d is Map) {
-            m = Map<String, dynamic>.from(d);
-          } else {
-            m = Map<String, dynamic>.from(root as Map);
-          }
-          coins = ((m['coin_balance'] ?? m['coins'] ?? 0) as num).toInt();
-          final total = m['total_earnings'] ?? m['earnings_total'] ?? m['total'];
-          if (total is num) earnings = total.toDouble();
-          if (total is String) {
-            earnings = double.tryParse(total) ?? earnings;
-          }
-        }
-      }
-    } catch (_) {}
-
-    // Compute completed requests count for stat box
-    final completedCount = requests
-        .where((r) => r.status == 'completed')
-        .length;
-
-    // Parse unread notifications count
-    int unread = 0;
-    try {
-      if (notifMeta.statusCode == 200) {
-        final root = jsonDecode(notifMeta.body);
-        if (root is Map && root['unread_count'] != null) {
-          unread = (root['unread_count'] as num?)?.toInt() ?? 0;
-        } else if (root is Map && root['data'] is Map) {
-          final d = root['data'] as Map;
-          if (d['unread_count'] is num)
-            unread = (d['unread_count'] as num).toInt();
-        }
-      }
-    } catch (_) {}
-
-    // Parse current user for greeting
-    String name = '';
-    String? avatarUrl;
-    String location = '';
-    try {
-      if (meRes.statusCode == 200) {
-        final root = jsonDecode(meRes.body);
-        Map<String, dynamic>? data;
-        if (root is Map) {
-          final raw = (root['user'] ?? root['data'] ?? root);
-          if (raw is Map) data = Map<String, dynamic>.from(raw);
-        }
-        if (data != null) {
-          final first = (data['first_name'] ?? data['firstName'] ?? '')
-              .toString();
-          final last = (data['last_name'] ?? data['lastName'] ?? '').toString();
-          final n = (data['name'] ?? '').toString();
-          name = n.isNotEmpty ? n : ('$first $last').trim();
-          avatarUrl = _resolveImage(
-            (data['avatar_url'] ??
-                    data['avatar'] ??
-                    data['profile_photo_url'] ??
-                    data['profile_photo_path'] ??
-                    data['photo'])
-                ?.toString(),
-          );
-          location = (data['address'] ?? data['location'] ?? '').toString();
-        }
-      }
-    } catch (_) {}
-
-    return _DashboardData(
-      notificationsUnread: unread,
-      requests: requests,
-      coins: coins,
-      totalEarnings: earnings,
-      completedCount: completedCount,
-      name: name,
-      avatarUrl: avatarUrl,
-      location: location,
-    );
-  }
-
-  String? _resolveImage(String? raw) {
-    if (raw == null) return null;
-    final resolved = resolveMediaUrl(raw);
-    return resolved.isEmpty ? null : resolved;
+    return ref.read(fixerDashboardControllerProvider.notifier).refresh();
   }
 
   // Polling for new requests and prompt fixer
@@ -280,17 +144,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dashboardAsync = ref.watch(fixerDashboardControllerProvider);
+
     return Scaffold(
-      body: FutureBuilder<_DashboardData>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final data = snap.data ?? _DashboardData.empty();
-          final activeCount = data.requests
+      body: dashboardAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.wifi_off_rounded,
+                  size: 48,
+                  color: Colors.black38,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Unable to load dashboard.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.urbanist(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  err.toString(),
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.urbanist(color: Colors.black54),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  onPressed: () => ref
+                      .read(fixerDashboardControllerProvider.notifier)
+                      .refresh(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF1592A),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Try again'),
+                ),
+              ],
+            ),
+          ),
+        ),
+        data: (snapshot) {
+          _coins = snapshot.coins;
+          final activeCount = snapshot.activeRequests
               .where((r) => r.status != 'completed' && r.status != 'cancelled')
               .length;
+
           return SafeArea(
             child: RefreshIndicator(
               onRefresh: _refreshDashboard,
@@ -298,7 +207,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   _HeaderCard(
-                    data: data,
+                    snapshot: snapshot,
                     onNotificationsTap: () async {
                       await Navigator.pushNamed(context, '/notifications');
                       if (mounted) _refreshDashboard();
@@ -306,9 +215,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 16),
                   _StatRow(
-                    notifications: data.notificationsUnread,
-                    requests: data.requests.length,
-                    completed: data.completedCount,
+                    notifications: snapshot.unreadNotifications,
+                    requests: snapshot.activeRequests.length,
+                    completed: snapshot.completedCount,
                   ),
                   const SizedBox(height: 16),
                   _ActionCard(
@@ -328,7 +237,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  if (data.requests.isEmpty)
+                  if (snapshot.activeRequests.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -342,7 +251,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     )
                   else
-                    ...data.requests
+                    ...snapshot.activeRequests
                         .take(5)
                         .map(
                           (r) => Padding(
@@ -365,37 +274,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-}
-
-class _DashboardData {
-  final int notificationsUnread;
-  final List<ServiceRequest> requests;
-  final int coins;
-  final double totalEarnings;
-  final int completedCount;
-  final String name;
-  final String? avatarUrl;
-  final String location;
-  _DashboardData({
-    required this.notificationsUnread,
-    required this.requests,
-    required this.coins,
-    required this.totalEarnings,
-    required this.completedCount,
-    required this.name,
-    required this.avatarUrl,
-    required this.location,
-  });
-  factory _DashboardData.empty() => _DashboardData(
-    notificationsUnread: 0,
-    requests: const [],
-    coins: 0,
-    totalEarnings: 0,
-    completedCount: 0,
-    name: '',
-    avatarUrl: null,
-    location: '',
-  );
 }
 
 class _StatRow extends StatelessWidget {
@@ -439,9 +317,9 @@ class _StatRow extends StatelessWidget {
 }
 
 class _HeaderCard extends StatelessWidget {
-  final _DashboardData data;
+  final FixerDashboardSnapshot snapshot;
   final VoidCallback onNotificationsTap;
-  const _HeaderCard({required this.data, required this.onNotificationsTap});
+  const _HeaderCard({required this.snapshot, required this.onNotificationsTap});
 
   @override
   Widget build(BuildContext context) {
@@ -470,14 +348,16 @@ class _HeaderCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _DashboardAvatar(url: data.avatarUrl, radius: 26),
+              _DashboardAvatar(url: snapshot.avatarUrl, radius: 26),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      data.name.isEmpty ? 'Hi there,' : 'Hi, ${data.name}',
+                      snapshot.displayName.isEmpty
+                          ? 'Hi there,'
+                          : 'Hi, ${snapshot.displayName}',
                       style: GoogleFonts.urbanist(
                         color: Colors.white,
                         fontSize: 18,
@@ -486,9 +366,9 @@ class _HeaderCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      data.location.isEmpty
+                      snapshot.location.isEmpty
                           ? 'Ready to serve today?'
-                          : data.location,
+                          : snapshot.location,
                       style: GoogleFonts.urbanist(color: Colors.white70),
                     ),
                   ],
@@ -509,7 +389,7 @@ class _HeaderCard extends StatelessWidget {
                         color: Colors.white,
                       ),
                     ),
-                    if (data.notificationsUnread > 0)
+                    if (snapshot.unreadNotifications > 0)
                       Positioned(
                         right: 6,
                         top: 6,
@@ -558,7 +438,7 @@ class _HeaderCard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        data.coins > 0
+                        snapshot.coins > 0
                             ? 'Keep accepting requests to earn more.'
                             : 'Top up to continue accepting jobs.',
                         style: GoogleFonts.urbanist(
@@ -570,7 +450,7 @@ class _HeaderCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${data.coins}',
+                  '${snapshot.coins}',
                   style: GoogleFonts.urbanist(
                     color: brand,
                     fontWeight: FontWeight.w800,
@@ -586,10 +466,16 @@ class _HeaderCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             child: InkWell(
               borderRadius: BorderRadius.circular(18),
-              onTap: () => Navigator.of(context).pushNamed('/wallet/transactions', arguments: data.totalEarnings),
+              onTap: () => Navigator.of(context).pushNamed(
+                '/wallet/transactions',
+                arguments: snapshot.totalEarnings,
+              ),
               child: Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.18),
                   borderRadius: BorderRadius.circular(18),
@@ -603,7 +489,10 @@ class _HeaderCard extends StatelessWidget {
                         color: Color(0x33FFFFFF),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.payments_outlined, color: Colors.white),
+                      child: const Icon(
+                        Icons.payments_outlined,
+                        color: Colors.white,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -628,7 +517,7 @@ class _HeaderCard extends StatelessWidget {
                             ],
                           ),
                           Text(
-                            data.totalEarnings > 0
+                            snapshot.totalEarnings > 0
                                 ? 'Great job! Keep the momentum going.'
                                 : 'Complete jobs to start earning.',
                             style: GoogleFonts.urbanist(
@@ -640,7 +529,7 @@ class _HeaderCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      currency.format(data.totalEarnings),
+                      currency.format(snapshot.totalEarnings),
                       style: GoogleFonts.urbanist(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
@@ -685,8 +574,7 @@ class _DashboardAvatarState extends State<_DashboardAvatar> {
 
     Widget child;
     final url = widget.url?.trim() ?? '';
-    final validUrl =
-        url.isNotEmpty && url.toLowerCase() != 'null' ? url : '';
+    final validUrl = url.isNotEmpty && url.toLowerCase() != 'null' ? url : '';
     if (!_failed && validUrl.isNotEmpty) {
       child = ClipOval(
         child: Image.network(
