@@ -136,7 +136,9 @@ class _WalletTransactionsScreenState extends State<WalletTransactionsScreen> {
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(18),
-                  borderSide: BorderSide(color: Colors.black12.withOpacity(0.05)),
+                  borderSide: BorderSide(
+                    color: Colors.black12.withOpacity(0.05),
+                  ),
                 ),
               ),
             ),
@@ -237,10 +239,13 @@ class _WalletTransactionsScreenState extends State<WalletTransactionsScreen> {
                         final entry = _entries[index];
                         final amount = (entry.amount ?? 0).toDouble();
                         final positive = amount >= 0;
-                        final accent = positive ? brand : const Color(0xFFF54832);
+                        final accent = positive
+                            ? brand
+                            : const Color(0xFFF54832);
                         final title = entry.title ?? entry.serviceName;
-                        final statusLabel =
-                            positive ? 'Payout received' : 'Adjustment';
+                        final statusLabel = positive
+                            ? 'Payout received'
+                            : 'Adjustment';
                         final gradientColors = positive
                             ? const [Color(0xFFF1592A), Color(0xFFFF8A4C)]
                             : const [Color(0xFFF54832), Color(0xFFFF7B6B)];
@@ -269,7 +274,11 @@ class _WalletTransactionsScreenState extends State<WalletTransactionsScreen> {
                                 children: [
                                   Container(
                                     padding: const EdgeInsets.fromLTRB(
-                                        18, 16, 18, 14),
+                                      18,
+                                      16,
+                                      18,
+                                      14,
+                                    ),
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         colors: gradientColors,
@@ -281,13 +290,16 @@ class _WalletTransactionsScreenState extends State<WalletTransactionsScreen> {
                                       ),
                                     ),
                                     child: Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Container(
                                           height: 44,
                                           width: 44,
                                           decoration: BoxDecoration(
-                                            color: Colors.white.withOpacity(0.18),
+                                            color: Colors.white.withOpacity(
+                                              0.18,
+                                            ),
                                             shape: BoxShape.circle,
                                           ),
                                           child: Icon(
@@ -300,7 +312,8 @@ class _WalletTransactionsScreenState extends State<WalletTransactionsScreen> {
                                         const SizedBox(width: 14),
                                         Expanded(
                                           child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
                                               Text(
                                                 title ?? 'Service earnings',
@@ -314,14 +327,17 @@ class _WalletTransactionsScreenState extends State<WalletTransactionsScreen> {
                                               Text(
                                                 statusLabel,
                                                 style: GoogleFonts.urbanist(
-                                                  color: Colors.white.withOpacity(0.9),
+                                                  color: Colors.white
+                                                      .withOpacity(0.9),
                                                   fontWeight: FontWeight.w600,
                                                   fontSize: 12,
                                                 ),
                                               ),
                                               const SizedBox(height: 6),
                                               Text(
-                                                _dateFmt.format(entry.createdAt),
+                                                _dateFmt.format(
+                                                  entry.createdAt,
+                                                ),
                                                 style: GoogleFonts.urbanist(
                                                   color: Colors.white70,
                                                   fontSize: 12,
@@ -343,37 +359,55 @@ class _WalletTransactionsScreenState extends State<WalletTransactionsScreen> {
                                     ),
                                   ),
                                   Padding(
-                                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                                    padding: const EdgeInsets.fromLTRB(
+                                      18,
+                                      14,
+                                      18,
+                                      18,
+                                    ),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Wrap(
                                           spacing: 8,
                                           runSpacing: 8,
                                           children: [
-                                            if (entry.paymentMethod?.isNotEmpty == true)
+                                            if (entry
+                                                    .paymentMethod
+                                                    ?.isNotEmpty ==
+                                                true)
                                               _InfoChip(
-                                                icon: Icons.account_balance_wallet_outlined,
+                                                icon: Icons
+                                                    .account_balance_wallet_outlined,
                                                 label: entry.paymentMethod!,
                                               ),
-                                            if (entry.transactionId?.isNotEmpty == true)
+                                            if (entry
+                                                    .transactionId
+                                                    ?.isNotEmpty ==
+                                                true)
                                               _InfoChip(
                                                 icon: Icons.tag_outlined,
                                                 label: entry.transactionId!,
                                               ),
-                                            if (entry.serviceName?.isNotEmpty == true)
+                                            if (entry.serviceName?.isNotEmpty ==
+                                                true)
                                               _InfoChip(
-                                                icon: Icons.home_repair_service_rounded,
+                                                icon: Icons
+                                                    .home_repair_service_rounded,
                                                 label: entry.serviceName!,
                                               ),
-                                        if (entry.scheduledAt != null)
-                                          _InfoChip(
-                                            icon: Icons.calendar_month_rounded,
-                                            label: DateFormat('dd MMM').format(entry.scheduledAt!),
-                                          ),
-                                      ],
-                                    ),
-                                    if (locationLabel.isNotEmpty) ...[
+                                            if (entry.scheduledAt != null)
+                                              _InfoChip(
+                                                icon: Icons
+                                                    .calendar_month_rounded,
+                                                label: DateFormat(
+                                                  'dd MMM',
+                                                ).format(entry.scheduledAt!),
+                                              ),
+                                          ],
+                                        ),
+                                        if (locationLabel.isNotEmpty) ...[
                                           const SizedBox(height: 14),
                                           Container(
                                             width: double.infinity,
@@ -399,11 +433,11 @@ class _WalletTransactionsScreenState extends State<WalletTransactionsScreen> {
                                                 Expanded(
                                                   child: Text(
                                                     locationLabel,
-                                                    style:
-                                                        GoogleFonts.urbanist(
+                                                    style: GoogleFonts.urbanist(
                                                       fontSize: 13,
                                                       color: theme
-                                                          .colorScheme.onBackground,
+                                                          .colorScheme
+                                                          .onBackground,
                                                     ),
                                                   ),
                                                 ),
@@ -569,11 +603,10 @@ class _TransactionDetailModal extends StatelessWidget {
         ? const [Color(0xFFF1592A), Color(0xFFFF8A4C)]
         : const [Color(0xFFF54832), Color(0xFFFF7B6B)];
     final statusLabel = positive ? 'Payout received' : 'Adjustment';
-    final serviceLabel = (entry.title?.isNotEmpty == true
-            ? entry.title
-            : entry.serviceName)
-        ?.toString()
-        .trim();
+    final serviceLabel =
+        (entry.title?.isNotEmpty == true ? entry.title : entry.serviceName)
+            ?.toString()
+            .trim();
     final locationLabel = formatLocation(entry.note);
 
     final chips = <Widget>[];
@@ -652,8 +685,9 @@ class _TransactionDetailModal extends StatelessWidget {
         _DetailTile(
           icon: Icons.event_available_rounded,
           label: 'Scheduled for',
-          value: DateFormat('EEE, dd MMM yyyy – HH:mm')
-              .format(entry.scheduledAt!),
+          value: DateFormat(
+            'EEE, dd MMM yyyy – HH:mm',
+          ).format(entry.scheduledAt!),
         ),
       );
     }
@@ -826,8 +860,11 @@ class _TransactionDetailModal extends StatelessWidget {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(Icons.location_on_rounded,
-                                    color: accent, size: 20),
+                                Icon(
+                                  Icons.location_on_rounded,
+                                  color: accent,
+                                  size: 20,
+                                ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
@@ -847,9 +884,12 @@ class _TransactionDetailModal extends StatelessWidget {
                               onPressed: () => onCopy(entry.transactionId!),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: accent,
-                                side: BorderSide(color: accent.withOpacity(0.5)),
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
+                                side: BorderSide(
+                                  color: accent.withOpacity(0.5),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(18),
                                 ),
@@ -918,8 +958,7 @@ class _Filters extends StatelessWidget {
                     child: Text(
                       entry.value,
                       style: GoogleFonts.urbanist(
-                        color:
-                            active ? Colors.white : const Color(0xFF5B5B5B),
+                        color: active ? Colors.white : const Color(0xFF5B5B5B),
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1102,11 +1141,7 @@ class _InfoChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 14,
-            color: const Color(0xFF5B5B5B),
-          ),
+          Icon(icon, size: 14, color: const Color(0xFF5B5B5B)),
           const SizedBox(width: 6),
           Text(
             label,

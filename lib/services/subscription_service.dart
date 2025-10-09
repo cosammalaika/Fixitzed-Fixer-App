@@ -1,5 +1,4 @@
 import 'dart:convert';
-import '../models/subscription.dart';
 import 'api_client.dart';
 
 class SubscriptionService {
@@ -33,9 +32,54 @@ class SubscriptionService {
       if (loyaltyPoints > 0) 'loyalty_points': loyaltyPoints,
     };
     final res = await _api.post('/api/subscription/checkout', body: payload);
+    Map<String, dynamic>? body;
+    try {
+      final decoded = jsonDecode(res.body);
+      if (decoded is Map<String, dynamic>) {
+        body = decoded;
+      }
+    } catch (_) {}
+
     if (res.statusCode == 201 || res.statusCode == 200) {
-      return jsonDecode(res.body) as Map<String, dynamic>;
+      return body;
     }
-    return null;
+
+    if (body != null) {
+      final response = <String, dynamic>{
+        'success': false,
+        'message': _extractMessage(body),
+      };
+      if (body['data'] != null) {
+        response['data'] = body['data'];
+      }
+      return response;
+    }
+
+    return {
+      'success': false,
+      'message': 'Unable to complete purchase. Please try again.',
+    };
+  }
+
+  String _extractMessage(Map<String, dynamic> body) {
+    final message = body['message'];
+    if (message is String && message.trim().isNotEmpty) {
+      return message;
+    }
+
+    final errors = body['errors'];
+    if (errors is Map) {
+      for (final entry in errors.entries) {
+        final value = entry.value;
+        if (value is List && value.isNotEmpty) {
+          final first = value.first;
+          if (first is String && first.trim().isNotEmpty) {
+            return first;
+          }
+        }
+      }
+    }
+
+    return 'Unable to complete purchase. Please try again.';
   }
 }

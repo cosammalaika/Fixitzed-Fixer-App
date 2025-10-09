@@ -10,9 +10,8 @@ class NotificationItem {
   factory NotificationItem.fromJson(Map<String, dynamic> j) => NotificationItem(
         id: j['id'] as int,
         title: (j['title'] ?? '') as String,
-        body: (j['body'] ?? '') as String,
+        body: (j['body'] ?? j['message'] ?? '') as String,
         read: (j['read'] ?? j['is_read'] ?? false) as bool,
         createdAt: DateTime.parse((j['created_at'] ?? DateTime.now().toIso8601String()) as String),
       );
 }
-

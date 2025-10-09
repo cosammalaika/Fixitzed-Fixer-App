@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import '../../services/fixer_service.dart';
 import '../../models/service_request.dart';
+import '../../state/bookings_controller.dart';
 
 class BookingsListScreen extends StatefulWidget {
   const BookingsListScreen({super.key});
@@ -14,41 +15,11 @@ class BookingsListScreen extends StatefulWidget {
 class _BookingsListScreenState extends State<BookingsListScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tab;
-  final _fixer = FixerService();
-  bool _loading = true;
-  List<ServiceRequest> _pending = [];
-  List<ServiceRequest> _accepted = [];
-  List<ServiceRequest> _completed = [];
-  List<ServiceRequest> _declined = [];
-  bool _refreshing = false;
 
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: 4, vsync: this);
-    _load();
-  }
-
-  Future<void> _load() async {
-    if (_refreshing) return;
-    _refreshing = true;
-    setState(() => _loading = true);
-    try {
-      final p = await _fixer.requests(status: 'pending');
-      final a = await _fixer.requests(status: 'accepted');
-      final c = await _fixer.requests(status: 'completed');
-      final d = await _fixer.requests(status: 'declined');
-      if (!mounted) return;
-      setState(() {
-        _pending = p;
-        _accepted = a;
-        _completed = c;
-        _declined = d;
-      });
-    } finally {
-      if (mounted) setState(() => _loading = false);
-      _refreshing = false;
-    }
   }
 
   @override
@@ -60,109 +31,174 @@ class _BookingsListScreenState extends State<BookingsListScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        elevation: 0,
-        iconTheme: IconThemeData(color: theme.colorScheme.onBackground),
-        centerTitle: true,
-        title: Text('Bookings', style: GoogleFonts.urbanist(color: theme.colorScheme.onBackground, fontWeight: FontWeight.w700)),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: Container(
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.black12.withOpacity(0.06),
-                borderRadius: BorderRadius.circular(24),
+    return Consumer(
+      builder: (context, ref, _) {
+        final bookingsAsync = ref.watch(fixerBookingsProvider);
+        final current = bookingsAsync.valueOrNull;
+        final isRefreshing = bookingsAsync.isLoading && current != null;
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: theme.scaffoldBackgroundColor,
+            elevation: 0,
+            iconTheme: IconThemeData(color: theme.colorScheme.onBackground),
+            centerTitle: true,
+            title: Text(
+              'Bookings',
+              style: GoogleFonts.urbanist(
+                color: theme.colorScheme.onBackground,
+                fontWeight: FontWeight.w700,
               ),
-              child: TabBar(
-                controller: _tab,
-                indicator: BoxDecoration(
-                  color: const Color(0xFFF1592A),
-                  borderRadius: BorderRadius.circular(20),
+            ),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(48),
+              child: Container(
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
                 ),
-                indicatorSize: TabBarIndicatorSize.tab,
-                labelColor: Colors.white,
-                unselectedLabelColor: theme.hintColor,
-                labelStyle: GoogleFonts.urbanist(fontWeight: FontWeight.w700),
-                unselectedLabelStyle: GoogleFonts.urbanist(),
-                tabs: const [
-                  Tab(text: 'New'),
-                  Tab(text: 'Accepted'),
-                  Tab(text: 'Completed'),
-                  Tab(text: 'Declined'),
-                ],
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.black12.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: TabBar(
+                    controller: _tab,
+                    indicator: BoxDecoration(
+                      color: const Color(0xFFF1592A),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    labelColor: Colors.white,
+                    unselectedLabelColor: theme.hintColor,
+                    labelStyle: GoogleFonts.urbanist(
+                      fontWeight: FontWeight.w700,
+                    ),
+                    unselectedLabelStyle: GoogleFonts.urbanist(),
+                    tabs: const [
+                      Tab(text: 'New'),
+                      Tab(text: 'Accepted'),
+                      Tab(text: 'Completed'),
+                      Tab(text: 'Declined'),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
-        ),
-      ),
-      body: SafeArea(
-        top: false,
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : Column(
+          body: SafeArea(
+            top: false,
+            child: bookingsAsync.when(
+              loading: () => current == null
+                  ? const Center(child: CircularProgressIndicator())
+                  : _buildBody(context, ref, current, isRefreshing: true),
+              error: (err, _) => _ErrorState(
+                message: err.toString(),
+                onRetry: () => ref
+                    .read(fixerBookingsProvider.notifier)
+                    .refresh(silent: false),
+              ),
+              data: (state) =>
+                  _buildBody(context, ref, state, isRefreshing: isRefreshing),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBody(
+    BuildContext context,
+    WidgetRef ref,
+    FixerBookingsState state, {
+    required bool isRefreshing,
+  }) {
+    return Stack(
+      children: [
+        Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFF1592A), Color(0xFFFFA26C)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(18),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFF1592A).withOpacity(0.18),
+                    blurRadius: 18,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: Row(
                 children: [
-                  // Gradient intro banner for visual parity with popups
                   Container(
-                    margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFF1592A), Color(0xFFFFA26C)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(18),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFF1592A).withOpacity(0.18),
-                          blurRadius: 18,
-                          offset: const Offset(0, 12),
-                        ),
-                      ],
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
                     ),
-                    child: Row(
+                    child: const Icon(
+                      Icons.event_available_rounded,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
-                          child: const Icon(Icons.event_available_rounded, color: Colors.white),
+                        Text(
+                          'Manage your bookings',
+                          style: GoogleFonts.urbanist(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Manage your bookings', style: GoogleFonts.urbanist(color: Colors.white, fontWeight: FontWeight.w800)),
-                              const SizedBox(height: 4),
-                              Text('Track new, accepted and completed jobs at a glance.', style: GoogleFonts.urbanist(color: Colors.white.withOpacity(0.9))),
-                            ],
+                        const SizedBox(height: 4),
+                        Text(
+                          'Track new, accepted and completed jobs at a glance.',
+                          style: GoogleFonts.urbanist(
+                            color: Colors.white.withOpacity(0.9),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Expanded(
-                    child: RefreshIndicator(
-                      onRefresh: _load,
-                      child: TabBarView(
-                        controller: _tab,
-                        children: [
-                          _list(_pending),
-                          _list(_accepted),
-                          _list(_completed),
-                          _list(_declined),
-                        ],
-                      ),
-                    ),
-                  ),
                 ],
               ),
-      ),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () =>
+                    ref.read(fixerBookingsProvider.notifier).refresh(),
+                child: TabBarView(
+                  controller: _tab,
+                  children: [
+                    _list(state.pending),
+                    _list(state.accepted),
+                    _list(state.completed),
+                    _list(state.declined),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (isRefreshing)
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: LinearProgressIndicator(minHeight: 2),
+          ),
+      ],
     );
   }
 
@@ -172,7 +208,11 @@ class _BookingsListScreenState extends State<BookingsListScreen>
         padding: const EdgeInsets.fromLTRB(16, 48, 16, 32),
         children: [
           const SizedBox(height: 24),
-          Icon(Icons.event_busy_rounded, size: 64, color: Theme.of(context).hintColor),
+          Icon(
+            Icons.event_busy_rounded,
+            size: 64,
+            color: Theme.of(context).hintColor,
+          ),
           const SizedBox(height: 12),
           Center(
             child: Text(
@@ -203,13 +243,23 @@ class _BookingsListScreenState extends State<BookingsListScreen>
             border: Border.all(color: const Color(0x1AF1592A)),
           ),
           child: InkWell(
-            onTap: () => Navigator.pushNamed(context, '/booking_detail', arguments: r.id),
+            onTap: () => Navigator.pushNamed(
+              context,
+              '/booking_detail',
+              arguments: r.id,
+            ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(color: Color(0x1AF1592A), shape: BoxShape.circle),
-                  child: const Icon(Icons.handyman_rounded, color: Color(0xFFF1592A)),
+                  decoration: const BoxDecoration(
+                    color: Color(0x1AF1592A),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.handyman_rounded,
+                    color: Color(0xFFF1592A),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -219,7 +269,12 @@ class _BookingsListScreenState extends State<BookingsListScreen>
                       Row(
                         children: [
                           Expanded(
-                            child: Text(r.service.name, style: GoogleFonts.urbanist(fontWeight: FontWeight.w700)),
+                            child: Text(
+                              r.service.name,
+                              style: GoogleFonts.urbanist(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
                           ),
                           _statusChip(r.status),
                         ],
@@ -227,14 +282,18 @@ class _BookingsListScreenState extends State<BookingsListScreen>
                       const SizedBox(height: 4),
                       Text(
                         '${r.customer.name}${r.location != null ? ' • ${r.location}' : ''}',
-                        style: GoogleFonts.urbanist(color: Theme.of(context).hintColor),
+                        style: GoogleFonts.urbanist(
+                          color: Theme.of(context).hintColor,
+                        ),
                       ),
                       if (r.declinedAt != null)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
                             'Declined: ${DateFormat('d MMM • HH:mm').format(r.declinedAt!.toLocal())}',
-                            style: GoogleFonts.urbanist(color: Theme.of(context).hintColor),
+                            style: GoogleFonts.urbanist(
+                              color: Theme.of(context).hintColor,
+                            ),
                           ),
                         )
                       else if (r.scheduledAt != null)
@@ -242,7 +301,9 @@ class _BookingsListScreenState extends State<BookingsListScreen>
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
                             'Scheduled: ${DateFormat('d MMM • HH:mm').format(r.scheduledAt!.toLocal())}',
-                            style: GoogleFonts.urbanist(color: Theme.of(context).hintColor),
+                            style: GoogleFonts.urbanist(
+                              color: Theme.of(context).hintColor,
+                            ),
                           ),
                         ),
                     ],
@@ -287,16 +348,72 @@ class _BookingsListScreenState extends State<BookingsListScreen>
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Text(
         status == 'awaiting_payment'
             ? 'Awaiting Payment'
             : status == 'declined'
-                ? 'Declined'
-                : status.isNotEmpty
-                    ? '${status[0].toUpperCase()}${status.substring(1)}'
-                    : status,
+            ? 'Declined'
+            : status.isNotEmpty
+            ? '${status[0].toUpperCase()}${status.substring(1)}'
+            : status,
         style: TextStyle(color: fg, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  const _ErrorState({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.cloud_off_rounded,
+              size: 52,
+              color: Colors.black26,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Unable to load bookings',
+              style: GoogleFonts.urbanist(
+                fontWeight: FontWeight.w700,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: GoogleFonts.urbanist(color: Colors.black54),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF1592A),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
       ),
     );
   }

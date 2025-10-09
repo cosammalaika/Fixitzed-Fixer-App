@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 import '../../services/api_client.dart';
 import '../../services/report_service.dart';
 import '../../config.dart';
+import 'manage_services_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -94,6 +95,52 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const Divider(height: 1, thickness: 1, color: Color(0xFFF2F2F2)),
       ],
     );
+  }
+
+  Set<int> _currentServiceIds() {
+    final candidates = [
+      user['fixer'],
+      user['fixer_profile'],
+      user['fixerProfile'],
+    ];
+    Map<String, dynamic>? profile;
+    for (final candidate in candidates) {
+      if (candidate is Map<String, dynamic> && candidate.isNotEmpty) {
+        profile = candidate;
+        break;
+      }
+    }
+    final servicesRaw = profile != null
+        ? profile['services']
+        : user['services'];
+    final result = <int>{};
+    if (servicesRaw is List) {
+      for (final entry in servicesRaw) {
+        final id = _resolveServiceId(entry);
+        if (id != null) result.add(id);
+      }
+    }
+    return result;
+  }
+
+  int? _resolveServiceId(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    if (value is Map) {
+      final map = Map<String, dynamic>.from(value as Map);
+      if (map['id'] != null) return _resolveServiceId(map['id']);
+      if (map['service_id'] != null)
+        return _resolveServiceId(map['service_id']);
+      if (map['serviceId'] != null) return _resolveServiceId(map['serviceId']);
+      if (map['pivot'] is Map) {
+        final pivot = Map<String, dynamic>.from(map['pivot'] as Map);
+        if (pivot['service_id'] != null) {
+          return _resolveServiceId(pivot['service_id']);
+        }
+      }
+    }
+    return null;
   }
 
   Future<void> _showReportSheet({required String type}) async {
@@ -458,6 +505,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               '/profile/edit',
                             );
                             if (res == true) _load();
+                          },
+                        ),
+                        _menuItem(
+                          Icons.home_repair_service_rounded,
+                          'Manage Services',
+                          onTap: () async {
+                            final initialIds = _currentServiceIds();
+                            final updated = await Navigator.push(
+                              context,
+                              MaterialPageRoute<bool>(
+                                builder: (_) => ManageServicesScreen(
+                                  initialServiceIds: initialIds,
+                                ),
+                                settings: const RouteSettings(
+                                  name: '/profile/manage-services',
+                                ),
+                              ),
+                            );
+                            if (updated == true) _load();
                           },
                         ),
                         _menuItem(

@@ -8,6 +8,7 @@ import '../services/fixer_service.dart';
 import '../models/service_request.dart';
 import '../config.dart';
 import '../state/dashboard_controller.dart';
+import '../state/bookings_controller.dart';
 import '../data/models/dashboard_snapshot.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -33,8 +34,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     super.dispose();
   }
 
-  Future<void> _refreshDashboard() {
-    return ref.read(fixerDashboardControllerProvider.notifier).refresh();
+  Future<void> _refreshDashboard() async {
+    await Future.wait([
+      ref.read(fixerDashboardControllerProvider.notifier).refresh(),
+      ref.read(fixerBookingsProvider.notifier).refresh(),
+    ]);
   }
 
   // Polling for new requests and prompt fixer
@@ -145,6 +149,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final dashboardAsync = ref.watch(fixerDashboardControllerProvider);
+    final bookingsAsync = ref.watch(fixerBookingsProvider);
 
     return Scaffold(
       body: dashboardAsync.when(
@@ -196,9 +201,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         data: (snapshot) {
           _coins = snapshot.coins;
-          final activeCount = snapshot.activeRequests
-              .where((r) => r.status != 'completed' && r.status != 'cancelled')
-              .length;
+          final bookingState = bookingsAsync.valueOrNull;
+          final activeCount =
+              bookingState?.active.length ??
+              snapshot.activeRequests
+                  .where(
+                    (r) => r.status != 'completed' && r.status != 'cancelled',
+                  )
+                  .length;
 
           return SafeArea(
             child: RefreshIndicator(

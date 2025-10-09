@@ -15,14 +15,16 @@ class FixerService {
 
   Future<Map<String, dynamic>?> dashboard() async {
     final res = await _api.get('/api/fixer/dashboard');
-    if (res.statusCode == 200) return jsonDecode(res.body) as Map<String, dynamic>;
+    if (res.statusCode == 200)
+      return jsonDecode(res.body) as Map<String, dynamic>;
     return null;
   }
 
   Future<List<ServiceRequest>> requests({String? status}) async {
-    final res = await _api.get('/api/fixer/requests', query: {
-      if (status != null) 'status': status,
-    });
+    final res = await _api.get(
+      '/api/fixer/requests',
+      query: {if (status != null) 'status': status},
+    );
     if (res.statusCode != 200) return [];
     final root = jsonDecode(res.body);
     List<dynamic>? list;
@@ -33,12 +35,12 @@ class FixerService {
       final data = root['data'];
       if (data is List) list = data;
       if (data is Map && data['data'] is List) list = data['data'] as List;
-      if (list == null && root['requests'] is List) list = root['requests'] as List;
+      if (list == null && root['requests'] is List)
+        list = root['requests'] as List;
       // fallback: first array value in map
-      list ??= root.values.firstWhere(
-        (v) => v is List,
-        orElse: () => const [],
-      ) as List;
+      list ??=
+          root.values.firstWhere((v) => v is List, orElse: () => const [])
+              as List;
     }
     final requests = (list ?? const [])
         .whereType<Map<String, dynamic>>()
@@ -62,14 +64,18 @@ class FixerService {
       List list;
       if (root is Map<String, dynamic>) {
         final data = root['data'];
-        list = (data is Map<String, dynamic>) ? (data['data'] as List? ?? []) : (data as List? ?? []);
+        list = (data is Map<String, dynamic>)
+            ? (data['data'] as List? ?? [])
+            : (data as List? ?? []);
       } else if (root is List) {
         list = root;
       } else {
         list = [];
       }
-      final requests =
-          list.whereType<Map<String, dynamic>>().map(ServiceRequest.fromJson).toList();
+      final requests = list
+          .whereType<Map<String, dynamic>>()
+          .map(ServiceRequest.fromJson)
+          .toList();
       unawaited(_notifyAssignments(requests));
       return requests;
     }
@@ -80,7 +86,9 @@ class FixerService {
     final res = await _api.get('/api/fixer/requests/today');
     if (res.statusCode == 200) {
       final list = jsonDecode(res.body) as List;
-      return list.map((e) => ServiceRequest.fromJson(e as Map<String, dynamic>)).toList();
+      return list
+          .map((e) => ServiceRequest.fromJson(e as Map<String, dynamic>))
+          .toList();
     }
     return [];
   }
@@ -88,7 +96,9 @@ class FixerService {
   Future<ServiceRequest?> transition(int id, String action) async {
     final res = await _api.patch('/api/fixer/requests/$id/$action', body: {});
     if (res.statusCode == 200) {
-      return ServiceRequest.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+      return ServiceRequest.fromJson(
+        jsonDecode(res.body) as Map<String, dynamic>,
+      );
     }
     return null;
   }
@@ -109,7 +119,9 @@ class FixerService {
     final res = await _api.post('/api/fixer/requests/$id/decline', body: {});
     final body = _decodeBody(res);
     final successFlag =
-        res.statusCode >= 200 && res.statusCode < 300 && (body['success'] ?? true) == true;
+        res.statusCode >= 200 &&
+        res.statusCode < 300 &&
+        (body['success'] ?? true) == true;
     return {
       'success': successFlag,
       'message': body['message']?.toString(),
@@ -149,9 +161,10 @@ class FixerService {
 
   /// Fetch wallet ledger entries with optional filters.
   Future<List<Map<String, dynamic>>> walletHistory({String? filter}) async {
-    final res = await _api.get('/api/fixer/wallet/history', query: {
-      if (filter != null && filter.isNotEmpty) 'filter': filter,
-    });
+    final res = await _api.get(
+      '/api/fixer/wallet/history',
+      query: {if (filter != null && filter.isNotEmpty) 'filter': filter},
+    );
     if (res.statusCode != 200) return const [];
     final decoded = jsonDecode(res.body);
     List raw;
@@ -176,9 +189,10 @@ class FixerService {
   }
 
   Future<bool> createBill(int id, double amount) async {
-    final res = await _api.post('/api/fixer/requests/$id/bill', body: {
-      'amount': amount,
-    });
+    final res = await _api.post(
+      '/api/fixer/requests/$id/bill',
+      body: {'amount': amount},
+    );
     return res.statusCode >= 200 && res.statusCode < 300;
   }
 
@@ -193,7 +207,11 @@ class FixerService {
     return {};
   }
 
-  Future<Fixer?> updateMe({String? bio, String? availability, List<int>? serviceIds}) async {
+  Future<Fixer?> updateMe({
+    String? bio,
+    String? availability,
+    List<int>? serviceIds,
+  }) async {
     final body = <String, dynamic>{
       if (bio != null) 'bio': bio,
       if (availability != null) 'availability': availability,
@@ -201,7 +219,10 @@ class FixerService {
     };
     final res = await _api.patch('/api/fixer/me', body: body);
     if (res.statusCode == 200) {
-      return Fixer.fromJson(jsonDecode(res.body) as Map<String, dynamic>);
+      final mapped = _extractFixer(_decodeBody(res));
+      if (mapped != null) {
+        return Fixer.fromJson(mapped);
+      }
     }
     return null;
   }
@@ -213,11 +234,22 @@ class FixerService {
     return streamed.statusCode == 200;
   }
 
+  Future<Fixer?> profile() async {
+    final res = await _api.get('/api/fixer/me');
+    if (res.statusCode != 200) return null;
+    final mapped = _extractFixer(_decodeBody(res));
+    if (mapped != null) {
+      return Fixer.fromJson(mapped);
+    }
+    return null;
+  }
+
   Future<void> _notifyAssignments(List<ServiceRequest> requests) async {
     try {
       if (requests.isEmpty) return;
       final prefs = await SharedPreferences.getInstance();
-      final seen = prefs.getStringList('fixer_seen_request_ids')?.toSet() ?? <String>{};
+      final seen =
+          prefs.getStringList('fixer_seen_request_ids')?.toSet() ?? <String>{};
       final newIds = <String>[];
 
       for (final req in requests) {
@@ -254,5 +286,105 @@ class FixerService {
       if (data is Map<String, dynamic>) return data;
     } catch (_) {}
     return {};
+  }
+
+  Map<String, dynamic>? _extractFixer(Map<String, dynamic> body) {
+    Map<String, dynamic>? candidate;
+
+    void hydrate(Map<String, dynamic> target, Map<String, dynamic> source) {
+      if (!target.containsKey('services') && source['services'] is List) {
+        final list = List<dynamic>.from(source['services'] as List);
+        if (list.every((element) => element is Map)) {
+          target['services'] = list
+              .map((item) => Map<String, dynamic>.from(item as Map))
+              .toList();
+        } else {
+          target['services'] = list;
+        }
+      }
+      if (!target.containsKey('user') && source['user'] is Map) {
+        target['user'] = Map<String, dynamic>.from(source['user'] as Map);
+      }
+    }
+
+    bool looksLikeFixer(Map<String, dynamic> map) {
+      return map.containsKey('services') ||
+          map.containsKey('bio') ||
+          map.containsKey('user');
+    }
+
+    Map<String, dynamic>? tryMap(dynamic value) {
+      if (value is Map) {
+        return Map<String, dynamic>.from(value);
+      }
+      return null;
+    }
+
+    final data = tryMap(body['data']);
+    if (data != null) {
+      if (looksLikeFixer(data)) {
+        candidate = data;
+      } else {
+        final nested =
+            tryMap(data['fixer']) ??
+            tryMap(data['fixer_profile']) ??
+            tryMap(data['fixerProfile']);
+        if (nested != null) {
+          hydrate(nested, data);
+          candidate = nested;
+        }
+      }
+    }
+
+    final resolved =
+        candidate ??
+        tryMap(body['fixer']) ??
+        tryMap(body['fixer_profile']) ??
+        tryMap(body['fixerProfile']);
+    if (resolved != null) {
+      hydrate(resolved, body);
+      candidate = resolved;
+    }
+
+    if (candidate == null &&
+        body.containsKey('id') &&
+        body.containsKey('user')) {
+      candidate = Map<String, dynamic>.from(body);
+    }
+
+    if (candidate == null) return null;
+
+    final services = candidate['services'];
+    if (services is List) {
+      candidate['services'] = services
+          .map((item) {
+            if (item is Map) {
+              final map = Map<String, dynamic>.from(item);
+              map['id'] = _parseId(map['id'] ?? map['service_id']);
+              if (map['name'] == null && map['id'] != null) {
+                map['name'] = 'Service #${map['id']}';
+              }
+              return map;
+            }
+            final id = _parseId(item);
+            if (id == null) return null;
+            return {'id': id, 'name': 'Service #$id', 'price': null};
+          })
+          .whereType<Map<String, dynamic>>()
+          .toList();
+    }
+
+    if (!candidate.containsKey('user') && body['user'] is Map) {
+      candidate['user'] = Map<String, dynamic>.from(body['user']);
+    }
+
+    return candidate;
+  }
+
+  int? _parseId(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 }
