@@ -76,4 +76,20 @@ class AuthService {
       await _api.setToken(null);
     }
   }
+
+  Future<bool> updateProfilePhoto(String path) async {
+    try {
+      final trimmed = path.trim();
+      if (trimmed.isEmpty) return false;
+      final request = await _api.multipart('/api/me', method: 'POST');
+      request.fields['_method'] = 'PATCH';
+      request.files.add(
+        await http.MultipartFile.fromPath('profile_photo', trimmed),
+      );
+      final streamed = await request.send();
+      return streamed.statusCode >= 200 && streamed.statusCode < 300;
+    } catch (_) {
+      return false;
+    }
+  }
 }

@@ -2,10 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../services/auth_service.dart';
-import '../../services/api_client.dart';
-import '../../services/report_service.dart';
+
 import '../../config.dart';
+import '../../services/api_client.dart';
+import '../../services/auth_service.dart';
+import '../../services/profile_photo_service.dart';
+import '../../services/report_service.dart';
 import 'manage_services_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -18,6 +20,8 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   Map<String, dynamic> user = {};
   bool _loading = true;
+  bool _uploadingPhoto = false;
+  int _avatarVersion = 0;
 
   @override
   void initState() {
@@ -95,6 +99,124 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const Divider(height: 1, thickness: 1, color: Color(0xFFF2F2F2)),
       ],
     );
+  }
+
+  Future<void> _openEditProfile() async {
+    final res = await Navigator.pushNamed(context, '/profile/edit');
+    if (res == true) {
+      await _load();
+    }
+  }
+
+  void _showAvatarPreview(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty || trimmed.toLowerCase() == 'null') return;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: InteractiveViewer(
+            child: Image.network(
+              trimmed,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  Image.asset('assets/images/logo-sm.png', fit: BoxFit.cover),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showChangePhotoSheet() async {
+    if (_uploadingPhoto) return;
+    final selection = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_rounded),
+              title: const Text('Capture photo'),
+              onTap: () => Navigator.of(ctx).pop('camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.of(ctx).pop('gallery'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.close_rounded),
+              title: const Text('Cancel'),
+              onTap: () => Navigator.of(ctx).pop(),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || selection == null) return;
+    final picker = ProfilePhotoService.instance;
+    String? path;
+    if (selection == 'camera') {
+      path = await picker.pickFromCamera();
+    } else if (selection == 'gallery') {
+      path = await picker.pickFromGallery();
+    }
+    if (!mounted || path == null || path.isEmpty) return;
+    await _uploadProfilePhoto(path);
+  }
+
+  Future<void> _uploadProfilePhoto(String path) async {
+    if (_uploadingPhoto) return;
+    setState(() => _uploadingPhoto = true);
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    bool success = false;
+    try {
+      success = await AuthService().updateProfilePhoto(path);
+    } finally {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        setState(() => _uploadingPhoto = false);
+      }
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'Profile photo updated.'
+              : 'Failed to update profile photo.',
+        ),
+      ),
+    );
+    if (success) {
+      await _load();
+      if (mounted) {
+        _avatarVersion++;
+        setState(() {});
+      }
+    }
   }
 
   Set<int> _currentServiceIds() {
@@ -339,6 +461,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               user['profile_photo_path'])
           ?.toString(),
     );
+    final avatarDisplay = (avatar.isNotEmpty && _avatarVersion > 0)
+        ? '$avatar${avatar.contains('?') ? '&' : '?'}v=$_avatarVersion'
+        : avatar;
     final email = (user['email'] ?? '').toString();
     final location = ((user['address'] ?? user['location']) ?? '')
         .toString()
@@ -396,7 +521,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         Row(
                           children: [
-                            _ProfileAvatar(url: avatar, radius: 36),
+                            _ProfileAvatar(
+                              url: avatarDisplay,
+                              radius: 36,
+                              onChangePhoto: _showChangePhotoSheet,
+                              onViewPhoto: () => _showAvatarPreview(avatarDisplay),
+                            ),
                             const SizedBox(width: 16),
                             Expanded(
                               child: Column(
@@ -504,13 +634,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _menuItem(
                           Icons.edit_rounded,
                           'Edit Profile',
-                          onTap: () async {
-                            final res = await Navigator.pushNamed(
-                              context,
-                              '/profile/edit',
-                            );
-                            if (res == true) _load();
-                          },
+                          onTap: _openEditProfile,
                         ),
                         _menuItem(
                           Icons.home_repair_service_rounded,
@@ -574,7 +698,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
 class _ProfileAvatar extends StatefulWidget {
   final String url;
   final double radius;
-  const _ProfileAvatar({required this.url, required this.radius});
+  final VoidCallback? onChangePhoto;
+  final VoidCallback? onViewPhoto;
+  const _ProfileAvatar({
+    required this.url,
+    required this.radius,
+    this.onChangePhoto,
+    this.onViewPhoto,
+  });
 
   @override
   State<_ProfileAvatar> createState() => _ProfileAvatarState();
@@ -619,10 +750,96 @@ class _ProfileAvatarState extends State<_ProfileAvatar> {
       imageChild = placeholder;
     }
 
-    return CircleAvatar(
-      radius: widget.radius,
-      backgroundColor: Colors.white,
-      child: imageChild,
+    return GestureDetector(
+      onTap: () => _showOptions(context, hasImage: validUrl),
+      child: CircleAvatar(
+        radius: widget.radius,
+        backgroundColor: Colors.white,
+        child: imageChild,
+      ),
+    );
+  }
+
+  void _showOptions(BuildContext context, {required bool hasImage}) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            Container(
+              width: 38,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.visibility_rounded),
+              title: const Text('View profile photo'),
+              enabled: hasImage,
+              onTap: hasImage
+                  ? () {
+                      Navigator.of(ctx).pop();
+                      if (widget.onViewPhoto != null) {
+                        widget.onViewPhoto!.call();
+                      } else {
+                        _defaultPreview(context);
+                      }
+                    }
+                  : null,
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Edit profile photo'),
+              enabled: widget.onChangePhoto != null,
+              onTap: widget.onChangePhoto != null
+                  ? () {
+                      Navigator.of(ctx).pop();
+                      widget.onChangePhoto!.call();
+                    }
+                  : null,
+            ),
+            ListTile(
+              leading: const Icon(Icons.close_rounded),
+              title: const Text('Cancel'),
+              onTap: () => Navigator.of(ctx).pop(),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _defaultPreview(BuildContext context) {
+    final url = widget.url.trim();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: InteractiveViewer(
+            child: url.isEmpty
+                ? Image.asset('assets/images/logo-sm.png', fit: BoxFit.cover)
+                : Image.network(
+                    url,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Image.asset(
+                      'assets/images/logo-sm.png',
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+          ),
+        ),
+      ),
     );
   }
 }
