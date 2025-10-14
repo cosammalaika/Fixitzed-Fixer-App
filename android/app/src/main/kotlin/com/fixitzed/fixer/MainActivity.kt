@@ -1,4 +1,4 @@
-package com.example.fixitzed_fixer_app
+package com.fixitzed.fixer
 
 import io.flutter.embedding.android.FlutterActivity
 
