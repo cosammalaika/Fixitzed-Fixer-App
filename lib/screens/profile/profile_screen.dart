@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../config.dart';
 import '../../services/api_client.dart';
 import '../../services/auth_service.dart';
+import '../../services/fixer_service.dart';
 import '../../services/profile_photo_service.dart';
 import '../../services/report_service.dart';
 import 'manage_services_screen.dart';
@@ -22,25 +23,82 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _loading = true;
   bool _uploadingPhoto = false;
   int _avatarVersion = 0;
+  late final VoidCallback _pointsListener;
 
   @override
   void initState() {
     super.initState();
+    _pointsListener = () {
+      final points = FixerService.priorityPointsNotifier.value;
+      if (!mounted || points == null) return;
+      setState(() {
+        user = {
+          ...user,
+          'priority_points': points,
+          'priorityPoints': points,
+        };
+      });
+    };
+    FixerService.priorityPointsNotifier.addListener(_pointsListener);
     _load();
   }
 
+  @override
+  void dispose() {
+    FixerService.priorityPointsNotifier.removeListener(_pointsListener);
+    super.dispose();
+  }
+
   Future<void> _load() async {
+    Map<String, dynamic> nextUser = Map<String, dynamic>.from(user);
+    Map<String, dynamic>? fixerData;
+
     try {
       final res = await ApiClient.I.get('/api/me');
       if (res.statusCode == 200) {
         final root = jsonDecode(res.body);
-        if (root is Map<String, dynamic>) {
-          user = (root['user'] ?? root['data'] ?? {}) as Map<String, dynamic>;
+        if (root is Map) {
+          final rawUser = root['user'] ?? root['data'] ?? {};
+          if (rawUser is Map) {
+            nextUser = Map<String, dynamic>.from(rawUser as Map);
+          }
         }
       }
     } catch (_) {}
+
+    try {
+      final fixerRes = await ApiClient.I.get('/api/fixer/me');
+      if (fixerRes.statusCode == 200) {
+        final root = jsonDecode(fixerRes.body);
+        if (root is Map) {
+          final data = root['data'] ?? root['fixer'] ?? root['profile'];
+          if (data is Map) {
+            fixerData = Map<String, dynamic>.from(data as Map);
+          }
+        }
+      }
+    } catch (_) {}
+
+    if (fixerData != null) {
+      final points = _asInt(
+        fixerData['priority_points'] ?? fixerData['priorityPoints'],
+      );
+      nextUser = {
+        ...nextUser,
+        'fixer': fixerData,
+        'fixer_profile': fixerData,
+        'fixerProfile': fixerData,
+        if (points != null) 'priority_points': points,
+        if (points != null) 'priorityPoints': points,
+      };
+      FixerService.broadcastPriorityPoints(points);
+    }
+
     if (!mounted) return;
-    setState(() => _loading = false);
+    setState(() {
+      user = nextUser;
+      _loading = false;
+    });
   }
 
   String _resolveImage(String? raw) {
@@ -265,6 +323,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return null;
   }
 
+  int? _priorityPoints() {
+    final variants = <Map<String, dynamic>>[
+      Map<String, dynamic>.from(user),
+      if (user['fixer'] is Map) Map<String, dynamic>.from(user['fixer'] as Map),
+      if (user['fixer_profile'] is Map)
+        Map<String, dynamic>.from(user['fixer_profile'] as Map),
+      if (user['fixerProfile'] is Map)
+        Map<String, dynamic>.from(user['fixerProfile'] as Map),
+    ];
+
+    for (final map in variants) {
+      for (final key in const ['priority_points', 'priorityPoints']) {
+        final resolved = _asInt(map[key]);
+        if (resolved != null) return resolved;
+      }
+    }
+
+    return null;
+  }
+
+  int? _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
   Future<void> _showReportSheet({required String type}) async {
     final subjectCtrl = TextEditingController();
     final messageCtrl = TextEditingController();
@@ -468,6 +553,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final location = ((user['address'] ?? user['location']) ?? '')
         .toString()
         .trim();
+    final priorityPoints = _priorityPoints();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9F4F1),
@@ -525,7 +611,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               url: avatarDisplay,
                               radius: 36,
                               onChangePhoto: _showChangePhotoSheet,
-                              onViewPhoto: () => _showAvatarPreview(avatarDisplay),
+                              onViewPhoto: () =>
+                                  _showAvatarPreview(avatarDisplay),
                             ),
                             const SizedBox(width: 16),
                             Expanded(
@@ -615,6 +702,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ],
                     ),
                   ),
+                  if (priorityPoints != null) ...[
+                    const SizedBox(height: 16),
+                    _PriorityPointsCard(points: priorityPoints),
+                  ],
                   const SizedBox(height: 28),
                   Container(
                     width: double.infinity,
@@ -668,6 +759,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Navigator.pushNamed(context, '/subscriptions'),
                         ),
                         _menuItem(
+                          Icons.info_rounded,
+                          'About FixitZed',
+                          onTap: () => Navigator.pushNamed(context, '/about'),
+                        ),
+                        _menuItem(
                           Icons.flag_outlined,
                           'Report a User',
                           onTap: () => _showReportSheet(type: 'user'),
@@ -691,6 +787,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ],
               ),
             ),
+    );
+  }
+}
+
+class _PriorityPointsCard extends StatelessWidget {
+  final int points;
+
+  const _PriorityPointsCard({required this.points});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFF1592A), Color(0xFFFF8A5C)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFF1592A).withOpacity(0.25),
+            blurRadius: 22,
+            offset: const Offset(0, 14),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.bolt_rounded, color: Colors.white),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Priority Points',
+                  style: GoogleFonts.urbanist(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$points pts',
+                  style: GoogleFonts.urbanist(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 24,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Higher points improve how often you are surfaced to clients.',
+                  style: GoogleFonts.urbanist(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 13.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

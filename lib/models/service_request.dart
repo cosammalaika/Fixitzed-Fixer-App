@@ -81,6 +81,7 @@ class ServiceRequest {
         availability: 'available',
         ratingAvg: null,
         services: const [],
+        priorityPoints: 0,
       );
     }
 

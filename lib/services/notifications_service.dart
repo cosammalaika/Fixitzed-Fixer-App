@@ -16,11 +16,13 @@ class NotificationsService {
         if (list != null) {
           return list
               .map((e) => NotificationItem.fromJson(e as Map<String, dynamic>))
+              .where(_isForFixerAudience)
               .toList();
         }
       } else if (root is List) {
         return root
             .map((e) => NotificationItem.fromJson(e as Map<String, dynamic>))
+            .where(_isForFixerAudience)
             .toList();
       }
     }
@@ -35,5 +37,21 @@ class NotificationsService {
   Future<bool> markAllRead() async {
     final res = await _api.post('/api/notifications/read-all', body: {});
     return res.statusCode == 200;
+  }
+
+  bool _isForFixerAudience(NotificationItem item) {
+    final type = item.recipientType.trim().toLowerCase();
+    if (type.isEmpty) return true;
+    if (type == 'individual') {
+      return true;
+    }
+    if (type == 'fixer' ||
+        type == 'fixers' ||
+        type == 'all' ||
+        type == 'broadcast' ||
+        type == 'system') {
+      return true;
+    }
+    return false;
   }
 }

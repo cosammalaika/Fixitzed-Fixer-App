@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,6 +13,14 @@ import 'local_notification_service.dart';
 
 class FixerService {
   final _api = ApiClient.I;
+  static final ValueNotifier<int?> priorityPointsNotifier =
+      ValueNotifier<int?>(null);
+
+  static void broadcastPriorityPoints(int? value) {
+    if (priorityPointsNotifier.value != value) {
+      priorityPointsNotifier.value = value;
+    }
+  }
 
   Future<Map<String, dynamic>?> dashboard() async {
     final res = await _api.get('/api/fixer/dashboard');
@@ -52,6 +61,14 @@ class FixerService {
         _declinedCache[req.id] = req.toJson();
       }
     }
+    final priority = requests
+        .map((req) => req.fixer?.priorityPoints)
+        .whereType<int>()
+        .fold<int?>(null, (prev, element) => prev ?? element);
+    if (priority != null) {
+      broadcastPriorityPoints(priority);
+    }
+
     return requests;
   }
 
@@ -106,7 +123,11 @@ class FixerService {
   // Accept a service request for this fixer according to provided routes
   Future<bool> acceptRequest(int id) async {
     final res = await _api.post('/api/service-requests/$id/accept', body: {});
-    return res.statusCode == 200 || res.statusCode == 201;
+    final ok = res.statusCode == 200 || res.statusCode == 201;
+    if (ok) {
+      unawaited(profile());
+    }
+    return ok;
   }
 
   // Update a request status (e.g., completed, cancelled)
@@ -122,6 +143,14 @@ class FixerService {
         res.statusCode >= 200 &&
         res.statusCode < 300 &&
         (body['success'] ?? true) == true;
+    if (successFlag) {
+      final points = _extractPriorityPoints(body);
+      if (points != null) {
+        broadcastPriorityPoints(points);
+      } else {
+        unawaited(profile());
+      }
+    }
     return {
       'success': successFlag,
       'message': body['message']?.toString(),
@@ -239,7 +268,9 @@ class FixerService {
     if (res.statusCode != 200) return null;
     final mapped = _extractFixer(_decodeBody(res));
     if (mapped != null) {
-      return Fixer.fromJson(mapped);
+      final fixer = Fixer.fromJson(mapped);
+      broadcastPriorityPoints(fixer.priorityPoints);
+      return fixer;
     }
     return null;
   }
@@ -387,4 +418,28 @@ class FixerService {
     if (value is String) return int.tryParse(value);
     return null;
   }
+}
+
+int? _extractPriorityPoints(dynamic data) {
+  int? parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  if (data is Map) {
+    final map = Map<String, dynamic>.from(data as Map);
+    for (final key in const ['priority_points', 'priorityPoints']) {
+      final val = parseInt(map[key]);
+      if (val != null) return val;
+    }
+    for (final key in const ['data', 'fixer', 'profile', 'user']) {
+      if (map[key] != null) {
+        final nested = _extractPriorityPoints(map[key]);
+        if (nested != null) return nested;
+      }
+    }
+  }
+  return null;
 }

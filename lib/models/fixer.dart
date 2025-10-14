@@ -5,6 +5,7 @@ class Fixer {
   final String availability; // available|busy|offline
   final double? ratingAvg;
   final List<Service> services;
+  final int priorityPoints;
 
   Fixer({
     required this.id,
@@ -13,6 +14,7 @@ class Fixer {
     required this.availability,
     required this.ratingAvg,
     required this.services,
+    required this.priorityPoints,
   });
 
   factory Fixer.fromJson(Map<String, dynamic> j) => Fixer(
@@ -34,6 +36,8 @@ class Fixer {
         })
         .whereType<Service>()
         .toList(),
+    priorityPoints:
+        _parseId(j['priority_points'] ?? j['priorityPoints']) ?? 0,
   );
 
   Map<String, dynamic> toJson() => {
@@ -43,6 +47,7 @@ class Fixer {
     'availability': availability,
     'rating_avg': ratingAvg,
     'services': services.map((s) => s.toJson()).toList(),
+    'priority_points': priorityPoints,
   };
 }
 

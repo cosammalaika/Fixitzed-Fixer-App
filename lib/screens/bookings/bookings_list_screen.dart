@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../models/service_request.dart';
 import '../../state/bookings_controller.dart';
+import '../../state/fixer_profile_controller.dart';
 
 class BookingsListScreen extends StatefulWidget {
   const BookingsListScreen({super.key});
@@ -181,10 +182,10 @@ class _BookingsListScreenState extends State<BookingsListScreen>
                 child: TabBarView(
                   controller: _tab,
                   children: [
-                    _list(state.pending),
-                    _list(state.accepted),
-                    _list(state.completed),
-                    _list(state.declined),
+                    _list(state.pending, ref),
+                    _list(state.accepted, ref),
+                    _list(state.completed, ref),
+                    _list(state.declined, ref),
                   ],
                 ),
               ),
@@ -202,7 +203,7 @@ class _BookingsListScreenState extends State<BookingsListScreen>
     );
   }
 
-  Widget _list(List<ServiceRequest> items) {
+  Widget _list(List<ServiceRequest> items, WidgetRef ref) {
     if (items.isEmpty) {
       return ListView(
         padding: const EdgeInsets.fromLTRB(16, 48, 16, 32),
@@ -243,11 +244,20 @@ class _BookingsListScreenState extends State<BookingsListScreen>
             border: Border.all(color: const Color(0x1AF1592A)),
           ),
           child: InkWell(
-            onTap: () => Navigator.pushNamed(
-              context,
-              '/booking_detail',
-              arguments: r.id,
-            ),
+            onTap: () async {
+              final result = await Navigator.pushNamed<bool>(
+                context,
+                '/booking_detail',
+                arguments: r.id,
+              );
+              if (!mounted) return;
+              if (result == true) {
+                await ref
+                    .read(fixerBookingsProvider.notifier)
+                    .refresh(silent: true);
+                ref.invalidate(fixerProfileProvider);
+              }
+            },
             child: Row(
               children: [
                 Container(
