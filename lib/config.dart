@@ -1,6 +1,6 @@
 const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://10.0.2.2:8000',
+  defaultValue: 'https://admin.fixitzed.com/api',
 );
 
 /// Parsed [Uri] for the configured API base URL.
@@ -33,6 +33,8 @@ String resolveMediaUrl(String raw) {
   var origin = apiBaseUrl;
   if (origin.endsWith('/api')) origin = origin.substring(0, origin.length - 4);
   final path = trimmed.startsWith('/') ? trimmed.substring(1) : trimmed;
-  final resolved = path.startsWith('storage/') ? '$origin/$path' : '$origin/storage/$path';
+  final resolved = path.startsWith('storage/')
+      ? '$origin/$path'
+      : '$origin/storage/$path';
   return resolved;
 }
