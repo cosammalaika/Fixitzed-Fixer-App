@@ -1,6 +1,4 @@
 import 'dart:convert';
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -222,18 +220,12 @@ class _SignInScreenState extends State<SignInScreen> {
         body: SafeArea(
           top: false,
           child: LayoutBuilder(
-            builder: (context, constraints) {
+            builder: (context, _) {
               final media = MediaQuery.of(context);
-              final headerHeight = math
-                  .min(420.0, math.max(280.0, constraints.maxHeight * 0.45))
-                  .toDouble();
-              final topPadding =
-                  media.padding.top +
-                  math.max(32.0, headerHeight - 250.0).toDouble();
+              final topPadding = media.padding.top + 36.0;
               final bottomPadding = media.viewInsets.bottom > 0
                   ? media.viewInsets.bottom + 24.0
                   : media.padding.bottom + 32.0;
-              final heroGap = math.max(32.0, headerHeight - 260.0).toDouble();
 
               return Stack(
                 children: [
@@ -302,7 +294,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                 ),
                               ],
                             ),
-                            SizedBox(height: 60),
+                            const SizedBox(height: 65),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 14,
