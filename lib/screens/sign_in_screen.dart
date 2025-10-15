@@ -39,7 +39,9 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Future<void> _loadRememberedIdentifier() async {
     final prefs = await SharedPreferences.getInstance();
-    final remembered = prefs.getString('remember_identifier') ?? prefs.getString('remember_email');
+    final remembered =
+        prefs.getString('remember_identifier') ??
+        prefs.getString('remember_email');
     if (remembered != null && remembered.isNotEmpty) {
       _identifierCtrl.text = remembered;
       setState(() => _rememberMe = true);
@@ -86,7 +88,10 @@ class _SignInScreenState extends State<SignInScreen> {
 
         final prefs = await SharedPreferences.getInstance();
         if (_rememberMe) {
-          await prefs.setString('remember_identifier', _identifierCtrl.text.trim());
+          await prefs.setString(
+            'remember_identifier',
+            _identifierCtrl.text.trim(),
+          );
           await prefs.remove('remember_email');
         } else {
           await prefs.remove('remember_identifier');
@@ -218,7 +223,7 @@ class _SignInScreenState extends State<SignInScreen> {
               return Stack(
                 children: [
                   Container(
-                    height: constraints.maxHeight * 0.43,
+                    height: constraints.maxHeight * 0.55,
                     decoration: const BoxDecoration(
                       gradient: LinearGradient(
                         colors: [Color(0xFF111111), Color(0xFF1F1F1F)],
@@ -355,12 +360,13 @@ class _SignInScreenState extends State<SignInScreen> {
                                     color: Theme.of(
                                       context,
                                     ).colorScheme.onSurface,
-                                    fontSize: 14,
+                                    fontSize: 15,
                                   ),
                                   cursorColor: const Color(0xFFF1592A),
                                   decoration: InputDecoration(
                                     labelText: "Email or phone number",
-                                    hintText: "Enter your email or phone number",
+                                    hintText:
+                                        "Enter your email or phone number",
                                     filled: true,
                                     fillColor: Theme.of(context)
                                         .colorScheme
@@ -427,7 +433,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                     color: Theme.of(
                                       context,
                                     ).colorScheme.onSurface,
-                                    fontSize: 14,
+                                    fontSize: 15,
                                   ),
                                   cursorColor: const Color(0xFFF1592A),
                                   decoration: InputDecoration(
@@ -540,7 +546,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                       : Text(
                                           "Sign In",
                                           style: GoogleFonts.urbanist(
-                                            fontSize: 16,
+                                            fontSize: 15,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
