@@ -278,7 +278,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                       ),
                                     ),
                                     Text(
-                                      'Stay on top of bookings & schedules',
+                                      'Stay on top of requests & schedules',
                                       style: GoogleFonts.urbanist(
                                         color: Colors.white.withOpacity(0.7),
                                         fontSize: 12,
@@ -334,7 +334,7 @@ class _SignInScreenState extends State<SignInScreen> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Access bookings, payments and daily tasks in one place.',
+                              'Access requests, payments and daily tasks in one place.',
                               style: GoogleFonts.urbanist(
                                 color: Colors.white.withOpacity(0.75),
                               ),
@@ -661,9 +661,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                         TextButton(
                                           onPressed: _loading
                                               ? null
-                                              : () => Navigator.of(
-                                                  context,
-                                                ).pushNamed('/becomeFixer'),
+                                              : _showBecomeFixerInfo,
                                           child: Text(
                                             'Apply as a fixer',
                                             style: GoogleFonts.urbanist(
@@ -702,6 +700,133 @@ class _SignInScreenState extends State<SignInScreen> {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Image.asset(asset, height: 28),
+      ),
+    );
+  }
+
+  Future<void> _showBecomeFixerInfo() async {
+    const brand = Color(0xFFF1592A);
+
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 30, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: brand.withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.handyman_rounded,
+                      color: brand,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'How to become a Fixer',
+                      style: GoogleFonts.urbanist(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Text(
+                'The Fixer app is only for professionals who have been approved. To apply:',
+                style: GoogleFonts.urbanist(
+                  color: Colors.black87,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildStep(
+                number: 1,
+                text: 'Download or open the FixitZed app on your phone.',
+              ),
+              _buildStep(
+                number: 2,
+                text:
+                    'Go to Profile › Become a Fixer and complete the application form with your skills, ID and preferred service areas.',
+              ),
+              _buildStep(
+                number: 3,
+                text:
+                    'Our team reviews applications daily. We will email and notify you once your account is approved.',
+              ),
+              _buildStep(
+                number: 4,
+                text:
+                    'After approval, return here and sign in with the same email or phone number.',
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: brand,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                  ),
+                  child: const Text('Okay, got it'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStep({required int number, required String text}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 26,
+            height: 26,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1592A).withOpacity(0.12),
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Text(
+              '$number',
+              style: GoogleFonts.urbanist(
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFFF1592A),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: GoogleFonts.urbanist(color: Colors.black87, height: 1.45),
+            ),
+          ),
+        ],
       ),
     );
   }
