@@ -15,6 +15,7 @@ import 'screens/notifications/notifications_screen.dart';
 import 'screens/home_shell.dart';
 import 'screens/transactions/wallet_transactions_screen.dart';
 import 'screens/about_screen.dart';
+import 'screens/auth/account_blocked_screen.dart';
 import 'services/local_notification_service.dart';
 
 Future<void> main() async {
@@ -56,6 +57,7 @@ class FixerApp extends StatelessWidget {
           '/wallet/transactions': (context) => const WalletTransactionsScreen(),
           '/notifications': (context) => const NotificationsScreen(),
           '/about': (context) => const AboutScreen(),
+          '/account_blocked': (context) => const AccountBlockedScreen(),
         },
       ),
     );

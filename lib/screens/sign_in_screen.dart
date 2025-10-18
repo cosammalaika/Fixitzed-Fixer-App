@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
 import '../services/api_client.dart';
+import 'auth/forgot_password_sheet.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -54,14 +55,21 @@ class _SignInScreenState extends State<SignInScreen> {
 
     setState(() => _loading = true);
     try {
-      final ok = await AuthService().login(
+      final loginResult = await AuthService().login(
         _identifierCtrl.text.trim(),
         _passCtrl.text,
       );
 
       if (!mounted) return;
 
-      if (ok) {
+      if (loginResult.inactive) {
+        await AuthService().logout();
+        if (!mounted) return;
+        Navigator.of(context).pushReplacementNamed('/account_blocked');
+        return;
+      }
+
+      if (loginResult.success) {
         // Enforce Fixer-only login by inspecting /api/me
         final meRes = await ApiClient.I.get('/api/me');
         bool isFixer = false;
@@ -551,11 +559,14 @@ class _SignInScreenState extends State<SignInScreen> {
                                         const Text("Remember Me"),
                                         const Spacer(),
                                         TextButton(
-                                          onPressed: _loading ? null : () {},
+                                          onPressed: _loading
+                                              ? null
+                                              : _showForgotPassword,
                                           child: Text(
-                                            "Forgot Password?",
+                                            "Forgot password?",
                                             style: GoogleFonts.urbanist(
                                               color: orange,
+                                              fontWeight: FontWeight.w600,
                                             ),
                                           ),
                                         ),
@@ -701,6 +712,25 @@ class _SignInScreenState extends State<SignInScreen> {
         ),
         child: Image.asset(asset, height: 28),
       ),
+    );
+  }
+
+  Future<void> _showForgotPassword() async {
+    final seed = _identifierCtrl.text.trim();
+    final completed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      builder: (ctx) =>
+          ForgotPasswordSheet(initialIdentifier: seed.isEmpty ? null : seed),
+    );
+
+    if (!mounted || completed != true) return;
+    _passCtrl.clear();
+    await _showAlert(
+      'Password updated',
+      'Your password was reset successfully. Sign in with the new password you created.',
     );
   }
 

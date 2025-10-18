@@ -3,26 +3,78 @@ import 'package:http/http.dart' as http;
 import '../models/fixer.dart';
 import 'api_client.dart';
 
+class LoginResult {
+  final bool success;
+  final bool inactive;
+
+  const LoginResult({required this.success, this.inactive = false});
+}
+
+class PasswordResetResult {
+  final bool success;
+  final String message;
+
+  const PasswordResetResult({
+    required this.success,
+    required this.message,
+  });
+}
+
 class AuthService {
   final _api = ApiClient.I;
 
   // Positional-args login to match UI usage (email/phone/username + password)
-  Future<bool> login(String identifier, String password) async {
+  Future<LoginResult> login(String identifier, String password) async {
     final res = await _api.post(
       '/api/login',
       body: {
-        // Backend can accept email/phone/username under a common key like 'email' or 'identifier'.
-        // If your API expects a different key, change 'email' accordingly.
         'identifier': identifier,
         'password': password,
       },
     );
-    if (res.statusCode == 200) {
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      final token = (data['token'] ?? data['access_token']) as String?;
-      if (token != null) {
-        await _api.setToken(token);
-        return true;
+    if (res.statusCode != 200) {
+      return const LoginResult(success: false);
+    }
+
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    final token = (data['token'] ?? data['access_token']) as String?;
+    if (token == null) {
+      return const LoginResult(success: false);
+    }
+
+    await _api.setToken(token);
+
+    bool inactive = _extractInactiveFlag(data['user']);
+
+    if (!inactive) {
+      final meRes = await _api.get('/api/me');
+      if (meRes.statusCode == 200) {
+        final decoded = jsonDecode(meRes.body);
+        Map<String, dynamic>? payload;
+        if (decoded is Map<String, dynamic>) {
+          if (decoded['user'] is Map<String, dynamic>) {
+            payload = Map<String, dynamic>.from(decoded['user'] as Map);
+          } else if (decoded['data'] is Map<String, dynamic>) {
+            payload = Map<String, dynamic>.from(decoded['data'] as Map);
+          }
+        }
+        inactive = _extractInactiveFlag(payload);
+      }
+    }
+
+    if (inactive) {
+      await _api.setToken(null);
+      return const LoginResult(success: false, inactive: true);
+    }
+
+    return const LoginResult(success: true);
+  }
+
+  bool _extractInactiveFlag(dynamic source) {
+    if (source is Map<String, dynamic>) {
+      final statusRaw = source['status'] ?? source['account_status'] ?? source['accountStatus'];
+      if (statusRaw is String && statusRaw.trim().isNotEmpty) {
+        return statusRaw.trim().toLowerCase() != 'active';
       }
     }
     return false;
@@ -91,5 +143,103 @@ class AuthService {
     } catch (_) {
       return false;
     }
+  }
+
+  Future<PasswordResetResult> requestPasswordReset(String identifier) async {
+    try {
+      final res = await _api.post(
+        '/api/password/forgot',
+        body: {
+          'identifier': identifier,
+        },
+      );
+      return _mapResetResponse(
+        res,
+        fallbackSuccess: 'If we find a matching account, a reset code will be emailed shortly.',
+      );
+    } catch (_) {
+      return const PasswordResetResult(
+        success: false,
+        message: 'Unable to submit the reset request. Check your connection and try again.',
+      );
+    }
+  }
+
+  Future<PasswordResetResult> confirmPasswordReset({
+    required String identifier,
+    required String token,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    try {
+      final res = await _api.post(
+        '/api/password/reset',
+        body: {
+          'identifier': identifier,
+          'token': token,
+          'password': password,
+          'password_confirmation': passwordConfirmation,
+        },
+      );
+      return _mapResetResponse(
+        res,
+        fallbackSuccess: 'Password updated successfully. You can now sign in with your new password.',
+      );
+    } catch (_) {
+      return const PasswordResetResult(
+        success: false,
+        message: 'Unable to update the password right now. Please try again in a moment.',
+      );
+    }
+  }
+
+  PasswordResetResult _mapResetResponse(
+    http.Response res, {
+    required String fallbackSuccess,
+  }) {
+    Map<String, dynamic>? body;
+    try {
+      body = jsonDecode(res.body) as Map<String, dynamic>?;
+    } catch (_) {}
+
+    final isSuccess = res.statusCode >= 200 && res.statusCode < 300;
+    String message = fallbackSuccess;
+
+    if (body != null) {
+      final msgValue = body['message'] ?? body['status'];
+      if (msgValue is String && msgValue.trim().isNotEmpty) {
+        message = msgValue.trim();
+      } else if (msgValue is List && msgValue.isNotEmpty) {
+        message = msgValue.join('\n');
+      }
+    }
+
+    if (!isSuccess) {
+      final errors = <String>[];
+      if (body != null) {
+        final err = body['errors'];
+        if (err is Map) {
+          err.forEach((_, value) {
+            if (value is List) {
+              errors.addAll(value.map((e) => e.toString()));
+            } else if (value != null) {
+              errors.add(value.toString());
+            }
+          });
+        } else if (err is List) {
+          errors.addAll(err.map((e) => e.toString()));
+        }
+      }
+
+      if (errors.isNotEmpty) {
+        message = errors.join('\n');
+      } else if (message == fallbackSuccess) {
+        message = res.statusCode >= 500
+            ? 'Something went wrong on our side. Please try again shortly.'
+            : 'Unable to process the request. Check the details and try again.';
+      }
+    }
+
+    return PasswordResetResult(success: isSuccess, message: message);
   }
 }
