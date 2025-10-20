@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -5,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../models/service_catalog.dart';
 import '../../state/catalog_provider.dart';
 import '../../state/fixer_profile_controller.dart';
+import '../../widgets/offline_placeholder.dart';
 
 class ManageServicesScreen extends ConsumerStatefulWidget {
   const ManageServicesScreen({super.key, this.initialServiceIds = const {}});
@@ -329,47 +331,14 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.cloud_off_rounded,
-              size: 48,
-              color: Colors.black26,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Something went wrong',
-              style: GoogleFonts.urbanist(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              style: GoogleFonts.urbanist(color: Colors.black54),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 18),
-            ElevatedButton.icon(
-              onPressed: onRetry,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF1592A),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Retry'),
-            ),
-          ],
-        ),
-      ),
+    return OfflinePlaceholder(
+      title: 'Can’t load your services',
+      message:
+          'Reconnect to update the services you offer. We’ll save any changes once you’re back online.',
+      onRetry: () {
+        onRetry();
+      },
+      details: kDebugMode ? message : null,
     );
   }
 }

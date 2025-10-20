@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -5,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../../models/service_request.dart';
 import '../../state/bookings_controller.dart';
 import '../../state/fixer_profile_controller.dart';
+import '../../widgets/offline_placeholder.dart';
+import '../../widgets/skeletons.dart';
 
 class BookingsListScreen extends StatefulWidget {
   const BookingsListScreen({super.key});
@@ -92,7 +95,7 @@ class _BookingsListScreenState extends State<BookingsListScreen>
             top: false,
             child: bookingsAsync.when(
               loading: () => current == null
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const FixerBookingsSkeleton()
                   : _buildBody(context, ref, current, isRefreshing: true),
               error: (err, _) => _ErrorState(
                 message: err.toString(),
@@ -384,47 +387,12 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.cloud_off_rounded,
-              size: 52,
-              color: Colors.black26,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Unable to load bookings',
-              style: GoogleFonts.urbanist(
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              style: GoogleFonts.urbanist(color: Colors.black54),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: onRetry,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF1592A),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Retry'),
-            ),
-          ],
-        ),
-      ),
+    return OfflinePlaceholder(
+      title: 'Couldn’t refresh bookings',
+      message:
+          'Pull to refresh or check your connection to see the latest bookings.',
+      onRetry: onRetry,
+      details: kDebugMode ? message : null,
     );
   }
 }

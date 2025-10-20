@@ -1,15 +1,17 @@
+import 'package:fixitzed_fixer_app/data/models/dashboard_snapshot.dart';
+import 'package:fixitzed_fixer_app/models/service_request.dart';
+import 'package:fixitzed_fixer_app/services/fixer_service.dart';
+import 'package:fixitzed_fixer_app/state/bookings_controller.dart';
+import 'package:fixitzed_fixer_app/state/dashboard_controller.dart';
+import 'package:fixitzed_fixer_app/ui/snack.dart';
+import 'package:fixitzed_fixer_app/widgets/offline_placeholder.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../ui/snack.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/fixer_service.dart';
-import '../models/service_request.dart';
-import '../config.dart';
-import '../state/dashboard_controller.dart';
-import '../state/bookings_controller.dart';
-import '../data/models/dashboard_snapshot.dart';
+import '../widgets/skeletons.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -150,137 +152,129 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final dashboardAsync = ref.watch(fixerDashboardControllerProvider);
     final bookingsAsync = ref.watch(fixerBookingsProvider);
+    final snapshot = dashboardAsync.valueOrNull;
+    final isInitialLoading = dashboardAsync.isLoading && snapshot == null;
+
+    if (isInitialLoading) {
+      return const Scaffold(
+        body: FixerDashboardSkeleton(),
+      );
+    }
+
+    if (snapshot == null) {
+      final err = dashboardAsync.error;
+      return Scaffold(
+        body: OfflinePlaceholder(
+          title: 'You\'re offline',
+          message:
+              'We couldn’t refresh your dashboard. Connect to the internet and try again.',
+          onRetry: () => ref
+              .read(fixerDashboardControllerProvider.notifier)
+              .refresh(),
+          details: kDebugMode && err != null ? err.toString() : null,
+        ),
+      );
+    }
+
+    _coins = snapshot.coins;
+    final bookingState = bookingsAsync.valueOrNull;
+    final activeCount =
+        bookingState?.active.length ??
+        snapshot.activeRequests
+            .where(
+              (r) => r.status != 'completed' && r.status != 'cancelled',
+            )
+            .length;
+    final isRefreshing = dashboardAsync.isLoading;
 
     return Scaffold(
-      body: dashboardAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.wifi_off_rounded,
-                  size: 48,
-                  color: Colors.black38,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Unable to load dashboard.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.urbanist(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _refreshDashboard,
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _HeaderCard(
+                snapshot: snapshot,
+                onNotificationsTap: () async {
+                  await Navigator.pushNamed(context, '/notifications');
+                  if (mounted) _refreshDashboard();
+                },
+              ),
+              const SizedBox(height: 16),
+              if (dashboardAsync.hasError)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _ErrorBanner(
+                    message:
+                        'Showing your last dashboard snapshot. Pull to refresh.',
+                    onRetry: () => ref
+                        .read(fixerDashboardControllerProvider.notifier)
+                        .refresh(),
                   ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  err.toString(),
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.urbanist(color: Colors.black54),
+              _StatRow(
+                notifications: snapshot.unreadNotifications,
+                requests: snapshot.activeRequests.length,
+                completed: snapshot.completedCount,
+              ),
+              const SizedBox(height: 16),
+              _ActionCard(
+                title: 'Active Bookings',
+                subtitle: activeCount == 0
+                    ? 'No pending jobs right now'
+                    : '$activeCount awaiting your action',
+                icon: Icons.assignment_turned_in_rounded,
+                onTap: () => Navigator.pushNamed(context, '/bookings'),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Recent Requests',
+                style: GoogleFonts.urbanist(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
                 ),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: () => ref
-                      .read(fixerDashboardControllerProvider.notifier)
-                      .refresh(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF1592A),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
+              ),
+              const SizedBox(height: 12),
+              if (snapshot.activeRequests.isEmpty)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F5F7),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Try again'),
-                ),
-              ],
-            ),
-          ),
-        ),
-        data: (snapshot) {
-          _coins = snapshot.coins;
-          final bookingState = bookingsAsync.valueOrNull;
-          final activeCount =
-              bookingState?.active.length ??
-              snapshot.activeRequests
-                  .where(
-                    (r) => r.status != 'completed' && r.status != 'cancelled',
-                  )
-                  .length;
-
-          return SafeArea(
-            child: RefreshIndicator(
-              onRefresh: _refreshDashboard,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _HeaderCard(
-                    snapshot: snapshot,
-                    onNotificationsTap: () async {
-                      await Navigator.pushNamed(context, '/notifications');
-                      if (mounted) _refreshDashboard();
-                    },
+                  child: Text(
+                    'No requests yet. Once a customer books you, it will appear here.',
+                    style: GoogleFonts.urbanist(color: Colors.black54),
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 16),
-                  _StatRow(
-                    notifications: snapshot.unreadNotifications,
-                    requests: snapshot.activeRequests.length,
-                    completed: snapshot.completedCount,
-                  ),
-                  const SizedBox(height: 16),
-                  _ActionCard(
-                    title: 'Active Bookings',
-                    subtitle: activeCount == 0
-                        ? 'No pending jobs right now'
-                        : '$activeCount awaiting your action',
-                    icon: Icons.assignment_turned_in_rounded,
-                    onTap: () => Navigator.pushNamed(context, '/bookings'),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Recent Requests',
-                    style: GoogleFonts.urbanist(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (snapshot.activeRequests.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F5F7),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        'No requests yet. Once a customer books you, it will appear here.',
-                        style: GoogleFonts.urbanist(color: Colors.black54),
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                  else
-                    ...snapshot.activeRequests
-                        .take(5)
-                        .map(
-                          (r) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _RequestCard(
-                              request: r,
-                              onTap: () => Navigator.pushNamed(
-                                context,
-                                '/booking_detail',
-                                arguments: r.id,
-                              ),
-                            ),
+                )
+              else
+                ...snapshot.activeRequests
+                    .take(5)
+                    .map(
+                      (r) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _RequestCard(
+                          request: r,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/booking_detail',
+                            arguments: r.id,
                           ),
                         ),
-                ],
-              ),
-            ),
-          );
-        },
+                      ),
+                    ),
+              if (isRefreshing)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Center(
+                    child: CircularProgressIndicator(strokeWidth: 2.4),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -322,6 +316,45 @@ class _StatRow extends StatelessWidget {
         box(Icons.work_history, 'Requests', requests),
         box(Icons.check_circle, 'Completed', completed),
       ],
+    );
+  }
+}
+
+class _ErrorBanner extends StatelessWidget {
+  const _ErrorBanner({required this.message, required this.onRetry});
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF4ED),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0x26F1592A)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.wifi_off_rounded, color: Color(0xFFF1592A)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.urbanist(
+                color: const Color(0xFF5F341F),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(
+            onPressed: onRetry,
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
     );
   }
 }
