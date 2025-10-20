@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -8,7 +9,11 @@ class SplashScreen extends StatelessWidget {
     Future.microtask(() async {
       await Future.delayed(const Duration(seconds: 1));
       if (!context.mounted) return;
-      Navigator.of(context).pushReplacementNamed('/onboarding');
+      final prefs = await SharedPreferences.getInstance();
+      final hasSeen = prefs.getBool('fixer_onboarding_seen') ?? false;
+      if (!context.mounted) return;
+      Navigator.of(context)
+          .pushReplacementNamed(hasSeen ? '/signin' : '/onboarding');
     });
 
     return const Scaffold(
