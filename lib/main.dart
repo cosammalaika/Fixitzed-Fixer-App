@@ -38,12 +38,14 @@ class FixerApp extends ConsumerWidget {
           title: "FixItZed Fixer",
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light().copyWith(
-            textTheme:
-                GoogleFonts.urbanistTextTheme(Theme.of(context).textTheme),
+            textTheme: GoogleFonts.urbanistTextTheme(
+              Theme.of(context).textTheme,
+            ),
           ),
           darkTheme: AppTheme.dark().copyWith(
-            textTheme:
-                GoogleFonts.urbanistTextTheme(Theme.of(context).textTheme),
+            textTheme: GoogleFonts.urbanistTextTheme(
+              Theme.of(context).textTheme,
+            ),
           ),
           themeMode: mode,
           initialRoute: '/',
