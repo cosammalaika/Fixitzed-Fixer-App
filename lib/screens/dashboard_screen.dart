@@ -11,7 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../widgets/skeletons.dart';
+import 'package:fixitzed_fixer_app/widgets/skeletons.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -94,7 +94,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (detail != null) {
         Map<String, dynamic>? customer;
         final raw = detail['customer'];
-        if (raw is Map) customer = Map<String, dynamic>.from(raw as Map);
+        if (raw is Map) customer = Map<String, dynamic>.from(raw);
         phone =
             (customer?['phone'] ??
                     customer?['mobile'] ??
@@ -717,7 +717,6 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const brand = Color(0xFFF1592A);
     final status = request.status;
     final scheduled = request.scheduledAt != null
         ? DateFormat('d MMM, HH:mm').format(request.scheduledAt!.toLocal())

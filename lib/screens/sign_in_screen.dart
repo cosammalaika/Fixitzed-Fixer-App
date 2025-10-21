@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
-import '../services/auth_service.dart';
-import '../services/api_client.dart';
-import 'auth/forgot_password_sheet.dart';
+import 'package:fixitzed_fixer_app/services/auth_service.dart';
+import 'package:fixitzed_fixer_app/services/api_client.dart';
+import 'package:fixitzed_fixer_app/screens/auth/forgot_password_sheet.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -23,7 +23,6 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _passwordVisible = false;
   bool _loading = false;
   bool _submitted = false; // control when to show validation
-  bool _biometricEnabled = false;
 
   @override
   void initState() {
@@ -701,19 +700,6 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _socialButton(String asset) {
-    return InkWell(
-      onTap: _loading ? null : () {},
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Image.asset(asset, height: 28),
-      ),
-    );
-  }
 
   Future<void> _showForgotPassword() async {
     final seed = _identifierCtrl.text.trim();

@@ -1,6 +1,4 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'api_client.dart';
+import 'package:fixitzed_fixer_app/services/api_client.dart';
 
 class ReportService {
   final _api = ApiClient.I;

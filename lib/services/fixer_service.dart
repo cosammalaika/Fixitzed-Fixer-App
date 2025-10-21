@@ -1,3 +1,5 @@
+// ignore_for_file: unnecessary_cast
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -6,10 +8,10 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/fixer.dart';
-import '../models/service_request.dart';
-import 'api_client.dart';
-import 'local_notification_service.dart';
+import 'package:fixitzed_fixer_app/models/fixer.dart';
+import 'package:fixitzed_fixer_app/models/service_request.dart';
+import 'package:fixitzed_fixer_app/services/api_client.dart';
+import 'package:fixitzed_fixer_app/services/local_notification_service.dart';
 
 class FixerService {
   final _api = ApiClient.I;
