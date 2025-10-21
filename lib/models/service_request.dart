@@ -1,4 +1,4 @@
-import 'fixer.dart';
+import 'package:fixitzed_fixer_app/models/fixer.dart';
 
 class ServiceRequest {
   final int id;
@@ -8,7 +8,7 @@ class ServiceRequest {
   final DateTime? scheduledAt;
   final DateTime? declinedAt;
   final DateTime? snoozedUntil;
-  final String status; // pending|accepted|ongoing|completed|cancelled|declined
+  final String status; 
   final String? location;
   final String? customerContact;
   final bool customerContactVisible;

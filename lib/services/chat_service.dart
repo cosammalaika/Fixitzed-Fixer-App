@@ -1,6 +1,6 @@
 import 'dart:convert';
-import '../models/chat.dart';
-import 'api_client.dart';
+import 'package:fixitzed_fixer_app/models/chat.dart';
+import 'package:fixitzed_fixer_app/services/api_client.dart';
 
 class ChatService {
   final _api = ApiClient.I;

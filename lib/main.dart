@@ -35,7 +35,7 @@ class FixerApp extends ConsumerWidget {
       valueListenable: AppTheme.mode,
       builder: (context, mode, _) {
         return MaterialApp(
-          title: "FixItZed Fixer",
+          title: 'FixItZed Fixer',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light().copyWith(
             textTheme: GoogleFonts.urbanistTextTheme(
