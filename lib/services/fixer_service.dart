@@ -12,8 +12,12 @@ import 'package:fixitzed_fixer_app/models/fixer.dart';
 import 'package:fixitzed_fixer_app/models/service_request.dart';
 import 'package:fixitzed_fixer_app/services/api_client.dart';
 import 'package:fixitzed_fixer_app/services/local_notification_service.dart';
+import 'package:fixitzed_fixer_app/state/app_sync.dart';
 
 class FixerService {
+  FixerService({AppSync? sync}) : _sync = sync ?? AppSync.instance;
+
+  final AppSync _sync;
   final _api = ApiClient.I;
   static final ValueNotifier<int?> priorityPointsNotifier =
       ValueNotifier<int?>(null);
@@ -128,6 +132,7 @@ class FixerService {
     final ok = res.statusCode == 200 || res.statusCode == 201;
     if (ok) {
       unawaited(profile());
+      _emitRequests(action: 'accept', requestId: id, status: 'accepted');
     }
     return ok;
   }
@@ -135,7 +140,11 @@ class FixerService {
   // Update a request status (e.g., completed, cancelled)
   Future<bool> updateStatus(int id, String status) async {
     final res = await _api.patch('/api/requests/$id', body: {'status': status});
-    return res.statusCode >= 200 && res.statusCode < 300;
+    final ok = res.statusCode >= 200 && res.statusCode < 300;
+    if (ok) {
+      _emitRequests(action: 'status', requestId: id, status: status);
+    }
+    return ok;
   }
 
   Future<Map<String, dynamic>> declineRequest(int id) async {
@@ -152,6 +161,7 @@ class FixerService {
       } else {
         unawaited(profile());
       }
+      _emitRequests(action: 'decline', requestId: id, status: 'declined');
     }
     return {
       'success': successFlag,
@@ -162,7 +172,11 @@ class FixerService {
 
   Future<bool> snoozeRequest(int id) async {
     final res = await _api.post('/api/fixer/requests/$id/snooze', body: {});
-    return res.statusCode >= 200 && res.statusCode < 300;
+    final ok = res.statusCode >= 200 && res.statusCode < 300;
+    if (ok) {
+      _emitRequests(action: 'snooze', requestId: id);
+    }
+    return ok;
   }
 
   // Fetch a single request detail (may include contact info)
@@ -224,7 +238,11 @@ class FixerService {
       '/api/fixer/requests/$id/bill',
       body: {'amount': amount},
     );
-    return res.statusCode >= 200 && res.statusCode < 300;
+    final ok = res.statusCode >= 200 && res.statusCode < 300;
+    if (ok) {
+      _emitRequests(action: 'bill', requestId: id);
+    }
+    return ok;
   }
 
   // Wallet: balance and coins remaining
@@ -252,7 +270,9 @@ class FixerService {
     if (res.statusCode == 200) {
       final mapped = _extractFixer(_decodeBody(res));
       if (mapped != null) {
-        return Fixer.fromJson(mapped);
+        final fixer = Fixer.fromJson(mapped);
+        _emitProfile(action: 'profileUpdated');
+        return fixer;
       }
     }
     return null;
@@ -262,7 +282,11 @@ class FixerService {
     final req = await _api.multipart('/api/me/avatar', method: 'POST');
     req.files.add(await http.MultipartFile.fromPath('avatar', filePath));
     final streamed = await req.send();
-    return streamed.statusCode == 200;
+    final ok = streamed.statusCode == 200;
+    if (ok) {
+      _emitProfile(action: 'avatarUpdated');
+    }
+    return ok;
   }
 
   Future<Fixer?> profile() async {
@@ -319,6 +343,36 @@ class FixerService {
       if (data is Map<String, dynamic>) return data;
     } catch (_) {}
     return {};
+  }
+
+  void _emitRequests({
+    String action = 'update',
+    int? requestId,
+    String? status,
+  }) {
+    _sync.emit(
+      AppSyncTopic.requests,
+      payload: <String, dynamic>{
+        'action': action,
+        if (requestId != null) 'requestId': requestId,
+        if (status != null) 'status': status,
+      },
+    );
+    _sync.emit(
+      AppSyncTopic.dashboard,
+      payload: const <String, dynamic>{'source': 'requests'},
+    );
+  }
+
+  void _emitProfile({String action = 'profile'}) {
+    _sync.emit(
+      AppSyncTopic.profile,
+      payload: <String, dynamic>{'action': action},
+    );
+    _sync.emit(
+      AppSyncTopic.dashboard,
+      payload: const <String, dynamic>{'source': 'profile'},
+    );
   }
 
   Map<String, dynamic>? _extractFixer(Map<String, dynamic> body) {

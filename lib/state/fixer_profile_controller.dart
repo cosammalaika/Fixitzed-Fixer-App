@@ -1,16 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fixitzed_fixer_app/models/fixer.dart';
 import 'package:fixitzed_fixer_app/services/fixer_service.dart';
 import 'package:fixitzed_fixer_app/state/service_providers.dart';
+import 'package:fixitzed_fixer_app/state/app_sync.dart';
 
 class FixerProfileController extends StateNotifier<AsyncValue<Fixer?>> {
-  FixerProfileController(this._service)
+  FixerProfileController(this._service, this._ref)
     : super(const AsyncValue<Fixer?>.loading()) {
     refresh();
+    _registerSync();
   }
 
   final FixerService _service;
+  final Ref _ref;
   bool _refreshing = false;
 
   Future<void> refresh({bool silent = false}) async {
@@ -37,6 +42,12 @@ class FixerProfileController extends StateNotifier<AsyncValue<Fixer?>> {
     state = updated;
     return false;
   }
+
+  void _registerSync() {
+    _ref.onAppSync(AppSyncTopic.profile, (_) {
+      unawaited(refresh());
+    });
+  }
 }
 
 final AutoDisposeStateNotifierProvider<
@@ -49,7 +60,7 @@ fixerProfileProvider =
       AsyncValue<Fixer?>
     >((ref) {
       final service = ref.read(fixerServiceProvider);
-      final controller = FixerProfileController(service);
+      final controller = FixerProfileController(service, ref);
       ref.onDispose(controller.dispose);
       return controller;
     });

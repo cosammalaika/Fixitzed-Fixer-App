@@ -1,8 +1,13 @@
 import 'dart:convert';
 import 'package:fixitzed_fixer_app/models/notification_item.dart';
 import 'package:fixitzed_fixer_app/services/api_client.dart';
+import 'package:fixitzed_fixer_app/state/app_sync.dart';
 
 class NotificationsService {
+  NotificationsService({AppSync? sync}) : _sync = sync ?? AppSync.instance;
+
+  final AppSync _sync;
+
   final _api = ApiClient.I;
 
   Future<List<NotificationItem>> list() async {
@@ -31,12 +36,34 @@ class NotificationsService {
 
   Future<bool> markRead(int id) async {
     final res = await _api.patch('/api/notifications/$id/read', body: {});
-    return res.statusCode == 200;
+    final ok = res.statusCode == 200;
+    if (ok) {
+      _sync.emit(
+        AppSyncTopic.notifications,
+        payload: <String, dynamic>{'action': 'markRead', 'id': id},
+      );
+      _sync.emit(
+        AppSyncTopic.dashboard,
+        payload: const <String, dynamic>{'source': 'notifications'},
+      );
+    }
+    return ok;
   }
 
   Future<bool> markAllRead() async {
     final res = await _api.post('/api/notifications/read-all', body: {});
-    return res.statusCode == 200;
+    final ok = res.statusCode == 200;
+    if (ok) {
+      _sync.emit(
+        AppSyncTopic.notifications,
+        payload: const <String, dynamic>{'action': 'markAll'},
+      );
+      _sync.emit(
+        AppSyncTopic.dashboard,
+        payload: const <String, dynamic>{'source': 'notifications'},
+      );
+    }
+    return ok;
   }
 
   bool _isForFixerAudience(NotificationItem item) {

@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:fixitzed_fixer_app/models/service_request.dart';
 import 'package:fixitzed_fixer_app/services/fixer_service.dart';
 import 'package:fixitzed_fixer_app/state/service_providers.dart';
+import 'package:fixitzed_fixer_app/state/app_sync.dart';
 
 class FixerBookingsState {
   const FixerBookingsState({
@@ -33,12 +36,14 @@ class FixerBookingsState {
 
 class FixerBookingsController
     extends StateNotifier<AsyncValue<FixerBookingsState>> {
-  FixerBookingsController(this._service)
+  FixerBookingsController(this._service, this._ref)
     : super(const AsyncValue<FixerBookingsState>.loading()) {
     refresh();
+    _registerSync();
   }
 
   final FixerService _service;
+  final Ref _ref;
   bool _refreshing = false;
 
   Future<void> refresh({bool silent = false}) async {
@@ -74,6 +79,18 @@ class FixerBookingsController
     state = result;
     _refreshing = false;
   }
+
+  void _registerSync() {
+    _ref.onAppSync(AppSyncTopic.requests, (_) {
+      unawaited(refresh());
+    });
+    _ref.onAppSync(AppSyncTopic.dashboard, (_) {
+      unawaited(refresh(silent: true));
+    });
+    _ref.onAppSync(AppSyncTopic.wallet, (_) {
+      unawaited(refresh(silent: true));
+    });
+  }
 }
 
 List<ServiceRequest> _mergeDistinct(
@@ -97,7 +114,7 @@ final fixerBookingsProvider =
       AsyncValue<FixerBookingsState>
     >((ref) {
       final service = ref.read(fixerServiceProvider);
-      final controller = FixerBookingsController(service);
+      final controller = FixerBookingsController(service, ref);
       ref.onDispose(controller.dispose);
       return controller;
     });
