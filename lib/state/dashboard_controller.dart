@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/models/dashboard_snapshot.dart';
-import '../data/repositories/dashboard_repository.dart';
-import 'repository_providers.dart';
+import 'package:fixitzed_fixer_app/data/models/dashboard_snapshot.dart';
+import 'package:fixitzed_fixer_app/data/repositories/dashboard_repository.dart';
+import 'package:fixitzed_fixer_app/state/repository_providers.dart';
 
 class FixerDashboardController
     extends StateNotifier<AsyncValue<FixerDashboardSnapshot>> {

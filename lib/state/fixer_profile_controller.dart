@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../models/fixer.dart';
-import '../services/fixer_service.dart';
-import 'service_providers.dart';
+import 'package:fixitzed_fixer_app/models/fixer.dart';
+import 'package:fixitzed_fixer_app/services/fixer_service.dart';
+import 'package:fixitzed_fixer_app/state/service_providers.dart';
 
 class FixerProfileController extends StateNotifier<AsyncValue<Fixer?>> {
   FixerProfileController(this._service)

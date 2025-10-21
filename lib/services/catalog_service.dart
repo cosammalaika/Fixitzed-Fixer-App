@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import '../models/service_catalog.dart';
-import 'api_client.dart';
+import 'package:fixitzed_fixer_app/models/service_catalog.dart';
+import 'package:fixitzed_fixer_app/services/api_client.dart';
 
 class CatalogService {
   CatalogService({ApiClient? client}) : _api = client ?? ApiClient.I;

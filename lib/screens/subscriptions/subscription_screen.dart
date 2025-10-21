@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../services/api_client.dart';
-import 'subscription_checkout_sheet.dart';
+import 'package:fixitzed_fixer_app/services/api_client.dart';
+import 'package:fixitzed_fixer_app/screens/subscriptions/subscription_checkout_sheet.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});

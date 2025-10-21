@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import '../../models/service_request.dart';
-import '../../state/bookings_controller.dart';
-import '../../state/fixer_profile_controller.dart';
-import '../../widgets/offline_placeholder.dart';
-import '../../widgets/skeletons.dart';
+import 'package:fixitzed_fixer_app/models/service_request.dart';
+import 'package:fixitzed_fixer_app/state/bookings_controller.dart';
+import 'package:fixitzed_fixer_app/state/fixer_profile_controller.dart';
+import 'package:fixitzed_fixer_app/widgets/offline_placeholder.dart';
+import 'package:fixitzed_fixer_app/widgets/skeletons.dart';
 
 class BookingsListScreen extends StatefulWidget {
   const BookingsListScreen({super.key});

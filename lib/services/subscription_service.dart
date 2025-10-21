@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'api_client.dart';
+import 'package:fixitzed_fixer_app/services/api_client.dart';
 
 class SubscriptionService {
   final _api = ApiClient.I;

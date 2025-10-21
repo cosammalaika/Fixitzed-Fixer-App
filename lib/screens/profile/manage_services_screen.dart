@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../models/service_catalog.dart';
-import '../../state/catalog_provider.dart';
-import '../../state/fixer_profile_controller.dart';
-import '../../widgets/offline_placeholder.dart';
+import 'package:fixitzed_fixer_app/models/service_catalog.dart';
+import 'package:fixitzed_fixer_app/state/catalog_provider.dart';
+import 'package:fixitzed_fixer_app/state/fixer_profile_controller.dart';
+import 'package:fixitzed_fixer_app/widgets/offline_placeholder.dart';
 
 class ManageServicesScreen extends ConsumerStatefulWidget {
   const ManageServicesScreen({super.key, this.initialServiceIds = const {}});

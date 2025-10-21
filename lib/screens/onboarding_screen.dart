@@ -15,19 +15,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<Map<String, String>> onboardingData = [
     {
-      "image": "assets/images/onboarding1.jpg",
-      "title": "Grow Your Earnings",
-      "body": "Get matched with nearby customers looking for your skills.",
+      'image': 'assets/images/onboarding1.jpg',
+      'title': 'Grow Your Earnings',
+      'body': 'Get matched with nearby customers looking for your skills.',
     },
     {
-      "image": "assets/images/onboarding2.jpg",
-      "title": "Work On Your Schedule",
-      "body": "Accept the jobs you want, when you want.",
+      'image': 'assets/images/onboarding2.jpg',
+      'title': 'Work On Your Schedule',
+      'body': 'Accept the jobs you want, when you want.',
     },
     {
-      "image": "assets/images/onboarding3.jpg",
-      "title": "Join Trusted Fixers",
-      "body": "Deliver great service and build your reputation.",
+      'image': 'assets/images/onboarding3.jpg',
+      'title': 'Join Trusted Fixers',
+      'body': 'Deliver great service and build your reputation.',
     },
   ];
 
@@ -38,7 +38,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final targetWidthPx = (mq.size.width * mq.devicePixelRatio).round();
     for (var item in onboardingData) {
       final provider = ResizeImage(
-        AssetImage(item["image"]!),
+        AssetImage(item['image']!),
         width: targetWidthPx,
       );
       precacheImage(provider, context);
@@ -101,7 +101,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                               (mq.size.width * mq.devicePixelRatio).round();
                           return Image(
                             image: ResizeImage(
-                              AssetImage(item["image"]!),
+                              AssetImage(item['image']!),
                               width: targetWidthPx,
                             ),
                             height: mq.size.height * 0.55,
@@ -133,7 +133,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         Column(
                           children: [
                             Text(
-                              item["title"]!,
+                              item['title']!,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 26,
@@ -143,7 +143,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             ),
                             const SizedBox(height: 14),
                             Text(
-                              item["body"]!,
+                              item['body']!,
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 fontSize: 16,

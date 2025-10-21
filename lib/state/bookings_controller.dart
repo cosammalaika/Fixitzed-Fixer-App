@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../models/service_request.dart';
-import '../services/fixer_service.dart';
-import 'service_providers.dart';
+import 'package:fixitzed_fixer_app/models/service_request.dart';
+import 'package:fixitzed_fixer_app/services/fixer_service.dart';
+import 'package:fixitzed_fixer_app/state/service_providers.dart';
 
 class FixerBookingsState {
   const FixerBookingsState({

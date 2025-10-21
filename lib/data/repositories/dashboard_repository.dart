@@ -2,11 +2,11 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import '../../services/api_client.dart';
-import '../../services/fixer_service.dart';
-import '../../services/notifications_service.dart';
-import '../../config.dart';
-import '../models/dashboard_snapshot.dart';
+import 'package:fixitzed_fixer_app/services/api_client.dart';
+import 'package:fixitzed_fixer_app/services/fixer_service.dart';
+import 'package:fixitzed_fixer_app/services/notifications_service.dart';
+import 'package:fixitzed_fixer_app/config.dart';
+import 'package:fixitzed_fixer_app/data/models/dashboard_snapshot.dart';
 
 class FixerDashboardRepository {
   FixerDashboardRepository(this._api, this._notifications, this._fixerService);

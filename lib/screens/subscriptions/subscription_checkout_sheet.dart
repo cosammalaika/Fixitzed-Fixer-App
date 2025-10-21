@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../services/api_client.dart';
-import '../../services/loyalty_service.dart';
-import '../../services/subscription_service.dart';
+import 'package:fixitzed_fixer_app/services/api_client.dart';
+import 'package:fixitzed_fixer_app/services/loyalty_service.dart';
+import 'package:fixitzed_fixer_app/services/subscription_service.dart';
 
 class SubscriptionCheckoutSheet extends StatefulWidget {
   final Map<String, dynamic> plan;

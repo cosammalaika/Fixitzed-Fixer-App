@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/fixer.dart';
-import 'api_client.dart';
+import 'package:fixitzed_fixer_app/models/fixer.dart';
+import 'package:fixitzed_fixer_app/services/api_client.dart';
 
 class LoginResult {
   final bool success;

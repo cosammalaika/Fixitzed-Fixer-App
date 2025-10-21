@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../config.dart';
-import '../../services/api_client.dart';
-import '../../services/auth_service.dart';
-import '../../services/fixer_service.dart';
-import '../../services/profile_photo_service.dart';
-import '../../services/report_service.dart';
-import 'manage_services_screen.dart';
+import 'package:fixitzed_fixer_app/config.dart';
+import 'package:fixitzed_fixer_app/services/api_client.dart';
+import 'package:fixitzed_fixer_app/services/auth_service.dart';
+import 'package:fixitzed_fixer_app/services/fixer_service.dart';
+import 'package:fixitzed_fixer_app/services/profile_photo_service.dart';
+import 'package:fixitzed_fixer_app/services/report_service.dart';
+import 'package:fixitzed_fixer_app/screens/profile/manage_services_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});

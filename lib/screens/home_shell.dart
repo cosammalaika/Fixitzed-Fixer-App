@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'bookings/bookings_list_screen.dart';
-import 'dashboard_screen.dart';
-import 'subscriptions/subscription_screen.dart';
-import 'profile/profile_screen.dart';
-import '../widgets/bottom_nav.dart';
+import 'package:fixitzed_fixer_app/screens/bookings/bookings_list_screen.dart';
+import 'package:fixitzed_fixer_app/screens/dashboard_screen.dart';
+import 'package:fixitzed_fixer_app/screens/subscriptions/subscription_screen.dart';
+import 'package:fixitzed_fixer_app/screens/profile/profile_screen.dart';
+import 'package:fixitzed_fixer_app/widgets/bottom_nav.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});

@@ -1,6 +1,6 @@
 import 'package:meta/meta.dart';
 
-import '../../models/service_request.dart';
+import 'package:fixitzed_fixer_app/models/service_request.dart';
 
 @immutable
 class FixerDashboardSnapshot {

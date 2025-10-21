@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/repositories/dashboard_repository.dart';
-import 'service_providers.dart';
+import 'package:fixitzed_fixer_app/data/repositories/dashboard_repository.dart';
+import 'package:fixitzed_fixer_app/state/service_providers.dart';
 
 final fixerDashboardRepositoryProvider = Provider<FixerDashboardRepository>((
   ref,

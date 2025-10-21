@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-import '../../services/api_client.dart';
+import 'package:fixitzed_fixer_app/services/api_client.dart';
 
 class WalletTransactionsScreen extends StatefulWidget {
   const WalletTransactionsScreen({super.key});

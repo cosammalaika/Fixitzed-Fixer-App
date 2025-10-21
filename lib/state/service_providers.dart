@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../services/api_client.dart';
-import '../services/catalog_service.dart';
-import '../services/fixer_service.dart';
-import '../services/notifications_service.dart';
+import 'package:fixitzed_fixer_app/services/api_client.dart';
+import 'package:fixitzed_fixer_app/services/catalog_service.dart';
+import 'package:fixitzed_fixer_app/services/fixer_service.dart';
+import 'package:fixitzed_fixer_app/services/notifications_service.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) => ApiClient.I);
 final fixerServiceProvider = Provider<FixerService>((ref) => FixerService());

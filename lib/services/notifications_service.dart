@@ -1,6 +1,6 @@
 import 'dart:convert';
-import '../models/notification_item.dart';
-import 'api_client.dart';
+import 'package:fixitzed_fixer_app/models/notification_item.dart';
+import 'package:fixitzed_fixer_app/services/api_client.dart';
 
 class NotificationsService {
   final _api = ApiClient.I;

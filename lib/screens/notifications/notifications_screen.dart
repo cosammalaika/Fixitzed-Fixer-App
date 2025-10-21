@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import '../../services/notifications_service.dart';
-import '../../models/notification_item.dart';
+import 'package:fixitzed_fixer_app/services/notifications_service.dart';
+import 'package:fixitzed_fixer_app/models/notification_item.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});

@@ -7,8 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../services/api_client.dart';
-import '../../services/local_notification_service.dart';
+import 'package:fixitzed_fixer_app/services/api_client.dart';
+import 'package:fixitzed_fixer_app/services/local_notification_service.dart';
 
 class BookingDetailScreen extends StatefulWidget {
   const BookingDetailScreen({super.key});

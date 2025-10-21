@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../models/service_catalog.dart';
-import '../services/catalog_service.dart';
-import 'service_providers.dart';
+import 'package:fixitzed_fixer_app/models/service_catalog.dart';
+import 'package:fixitzed_fixer_app/services/catalog_service.dart';
+import 'package:fixitzed_fixer_app/state/service_providers.dart';
 
 final serviceCatalogProvider = FutureProvider<List<ServiceCatalogSection>>((
   ref,
