@@ -78,7 +78,46 @@ class CatalogService {
     });
 
     sections.sort((a, b) => a.name.compareTo(b.name));
-    return sections;
+
+    final normalized = <ServiceCatalogSection>[];
+    for (final section in sections) {
+      final bySubcategory = <int?, List<ServiceCatalogItem>>{};
+      for (final item in section.items) {
+        final key = item.subcategoryId == 0 ? null : item.subcategoryId;
+        bySubcategory.putIfAbsent(key, () => <ServiceCatalogItem>[]).add(item);
+      }
+
+      if (bySubcategory.length > 1) {
+        final entries = bySubcategory.entries.toList()
+          ..sort((a, b) {
+            final aName =
+                a.value.first.subcategoryName?.trim().toLowerCase() ?? '';
+            final bName =
+                b.value.first.subcategoryName?.trim().toLowerCase() ?? '';
+            return aName.compareTo(bName);
+          });
+        var fallbackIndex = 0;
+        for (final entry in entries) {
+          fallbackIndex += 1;
+          final items = List<ServiceCatalogItem>.from(entry.value)
+            ..sort((a, b) => a.name.compareTo(b.name));
+          final rawName = items.first.subcategoryName?.trim();
+          final name = (rawName != null && rawName.isNotEmpty)
+              ? rawName
+              : '${section.name} $fallbackIndex';
+          final subcategoryId =
+              entry.key ?? -(section.id * 1000 + fallbackIndex);
+          normalized.add(
+            ServiceCatalogSection(id: subcategoryId, name: name, items: items),
+          );
+        }
+      } else {
+        normalized.add(section);
+      }
+    }
+
+    normalized.sort((a, b) => a.name.compareTo(b.name));
+    return normalized;
   }
 
   List<Map<String, dynamic>> _toMapMap(http.Response response) {

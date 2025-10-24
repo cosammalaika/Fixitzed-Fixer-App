@@ -34,11 +34,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final points = FixerService.priorityPointsNotifier.value;
       if (!mounted || points == null) return;
       setState(() {
-        user = {
-          ...user,
-          'priority_points': points,
-          'priorityPoints': points,
-        };
+        user = {...user, 'priority_points': points, 'priorityPoints': points};
       });
     };
     FixerService.priorityPointsNotifier.addListener(_pointsListener);
@@ -116,7 +112,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Color? iconColor,
     bool showDivider = true,
   }) {
-    const brand = Color(0xFFF1592A);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final brand = scheme.primary;
     final tile = InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
@@ -127,8 +126,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0x1AF1592A), Color(0x33F1592A)],
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [
+                          brand.withOpacity(0.32),
+                          scheme.secondary.withOpacity(0.18),
+                        ]
+                      : const [Color(0x1AF1592A), Color(0x33F1592A)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -143,11 +147,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: GoogleFonts.urbanist(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1F1F1F),
+                  color: scheme.onSurface,
                 ),
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: Colors.black26),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: scheme.onSurfaceVariant.withOpacity(isDark ? 0.45 : 0.35),
+            ),
           ],
         ),
       ),
@@ -156,7 +163,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         tile,
         if (showDivider)
-          const Divider(height: 1, thickness: 1, color: Color(0xFFF2F2F2)),
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: scheme.outline.withOpacity(isDark ? 0.12 : 0.06),
+          ),
       ],
     );
   }
@@ -712,15 +723,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Theme.of(context).cardColor,
                       borderRadius: BorderRadius.circular(28),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 18,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
+                      boxShadow: Theme.of(context).brightness == Brightness.dark
+                          ? null
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 18,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
                     ),
                     child: Column(
                       children: [
@@ -747,6 +760,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             );
                             if (updated == true) _load();
                           },
+                        ),
+                        _menuItem(
+                          Icons.tune_rounded,
+                          'Settings',
+                          onTap: () =>
+                              Navigator.pushNamed(context, '/settings'),
                         ),
                         _menuItem(
                           Icons.work_history_rounded,

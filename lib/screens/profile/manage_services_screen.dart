@@ -253,9 +253,15 @@ class _ManageServicesScreenState extends ConsumerState<ManageServicesScreen> {
                 section.items.any((item) => _selected.contains(item.id)),
           )
           .map((section) => section.id);
+      final isInitialLoad =
+          _catalogSignature.isEmpty && _catalogSections.isEmpty;
       final merged = <int>{...preserved, ...autoExpanded};
       if (merged.isEmpty && catalog.isNotEmpty) {
-        merged.add(catalog.first.id);
+        if (isInitialLoad) {
+          merged.addAll(availableIds);
+        } else {
+          merged.add(catalog.first.id);
+        }
       }
       setState(() {
         _catalogSections = catalog;
@@ -435,7 +441,9 @@ class _CategoryCard extends StatelessWidget {
       child: Theme(
         data: theme.copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          key: PageStorageKey<int>(section.id),
+          key: ValueKey<String>(
+            '${section.id}_${expanded ? 'open' : 'closed'}',
+          ),
           initiallyExpanded: expanded,
           onExpansionChanged: onExpansionChanged,
           tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
