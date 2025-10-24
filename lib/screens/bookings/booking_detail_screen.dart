@@ -36,7 +36,11 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     final detail = await _fetchDetail(id);
     if (!mounted) return;
     if (detail == null) {
-      AppSnack.show(context, message: 'Unable to load booking details', success: false);
+      AppSnack.show(
+        context,
+        message: 'Unable to load booking details',
+        success: false,
+      );
       setState(() {
         _loading = false;
         _detail = null;
@@ -66,10 +70,12 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         } else if (root is List) {
           list = root;
         }
-        return (list ?? []).whereType<Map<String, dynamic>>().firstWhere(
-          (row) => (row['id'] as int?) == id,
-          orElse: () => <String, dynamic>{},
+        final match = (list ?? []).whereType<Map<String, dynamic>>().firstWhere(
+          (row) => (row['id'] as num?)?.toInt() == id,
+          orElse: () => const <String, dynamic>{},
         );
+        if (match.isEmpty) return null;
+        return Map<String, dynamic>.from(match);
       }
     } catch (_) {}
     return null;
@@ -96,17 +102,17 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : (_detail == null
-              ? Center(
-                  child: Text(
-                    'Unable to load booking details',
-                    style: GoogleFonts.urbanist(color: Colors.black54),
-                  ),
-                )
-              : _FixerBookingSheet(
-                  detail: _detail!,
-                  fixerService: _fixer,
-                  showHandle: false,
-                )),
+                ? Center(
+                    child: Text(
+                      'Unable to load booking details',
+                      style: GoogleFonts.urbanist(color: Colors.black54),
+                    ),
+                  )
+                : _FixerBookingSheet(
+                    detail: _detail!,
+                    fixerService: _fixer,
+                    showHandle: false,
+                  )),
     );
   }
 }
@@ -116,7 +122,11 @@ class _FixerBookingSheet extends StatefulWidget {
   final FixerService fixerService;
   final bool showHandle;
 
-  const _FixerBookingSheet({required this.detail, required this.fixerService, this.showHandle = true});
+  const _FixerBookingSheet({
+    required this.detail,
+    required this.fixerService,
+    this.showHandle = true,
+  });
 
   @override
   State<_FixerBookingSheet> createState() => _FixerBookingSheetState();
@@ -130,6 +140,28 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
 
   int get _requestId => (_data['id'] as num).toInt();
 
+  bool _isTruthy(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      return normalized == 'true' ||
+          normalized == '1' ||
+          normalized == 'yes' ||
+          normalized == 'y';
+    }
+    return false;
+  }
+
+  String? _firstNonEmpty(Iterable<dynamic> values) {
+    for (final raw in values) {
+      if (raw == null) continue;
+      final str = raw.toString().trim();
+      if (str.isNotEmpty && str.toLowerCase() != 'null') return str;
+    }
+    return null;
+  }
+
   String _bookingCode() {
     final ref = _data['reference'] ?? _data['code'] ?? _data['booking_code'];
     final result = ref?.toString().trim();
@@ -140,7 +172,8 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
   }
 
   DateTime? _scheduledAt() {
-    final raw = _data['scheduled_at'] ?? _data['scheduledAt'] ?? _data['schedule'];
+    final raw =
+        _data['scheduled_at'] ?? _data['scheduledAt'] ?? _data['schedule'];
     return _parseDate(raw);
   }
 
@@ -235,7 +268,9 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     if (!mounted) return;
     AppSnack.show(
       context,
-      message: ok ? 'We will remind you again in an hour.' : 'Unable to snooze this request.',
+      message: ok
+          ? 'We will remind you again in an hour.'
+          : 'Unable to snooze this request.',
       success: ok,
     );
     if (ok) Navigator.of(context).pop(true);
@@ -481,11 +516,24 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     );
     final location = (_data['location'] ?? '').toString();
     final status = _status();
-    final contactVisible = (_data['customer_contact_visible'] == true);
-    final contactRaw =
-        customer['contact_number'] ?? customer['phone'] ?? customer['mobile'];
-    final contact = contactVisible && contactRaw != null
-        ? contactRaw.toString()
+    final statusLower = status.toLowerCase();
+    final contactVisible =
+        _isTruthy(_data['customer_contact_visible']) ||
+        statusLower == 'accepted' ||
+        statusLower == 'completed';
+    final contact = contactVisible
+        ? _firstNonEmpty([
+            _data['customer_contact'],
+            _data['contact'],
+            customer['contact_number'],
+            customer['phone'],
+            customer['mobile'],
+            customer['telephone'],
+            customer['phone_number'],
+            customer['mobile_number'],
+            customer['primary_phone'],
+            customer['contact'],
+          ])
         : null;
     final custName =
         (customer['name'] ??
@@ -816,7 +864,9 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
-          onPressed: _processing || _snoozing || !canSnooze ? null : _snoozeRequest,
+          onPressed: _processing || _snoozing || !canSnooze
+              ? null
+              : _snoozeRequest,
           icon: const Icon(Icons.schedule_rounded),
           label: Text(_snoozing ? 'Snoozing…' : 'Accept later'),
           style: OutlinedButton.styleFrom(

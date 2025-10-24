@@ -8,7 +8,7 @@ class ServiceRequest {
   final DateTime? scheduledAt;
   final DateTime? declinedAt;
   final DateTime? snoozedUntil;
-  final String status; 
+  final String status;
   final String? location;
   final String? customerContact;
   final bool customerContactVisible;
@@ -35,28 +35,66 @@ class ServiceRequest {
       return 0;
     }
 
-    Map<String, dynamic> asMap(dynamic v) => v is Map<String, dynamic> ? v : <String, dynamic>{};
+    Map<String, dynamic> asMap(dynamic v) =>
+        v is Map<String, dynamic> ? v : <String, dynamic>{};
 
     // Service may be nested as 'service' or provided via flat fields
     final svcMap = asMap(j['service'] ?? j['service_data'] ?? {});
-    final custMap = asMap(j['customer'] ?? j['user'] ?? (asMap(j['customer_data'])));
-    final fixerMap = asMap(j['fixer'] ?? j['assigned_to'] ?? j['fixer_data'] ?? {});
+    final custMap = asMap(
+      j['customer'] ?? j['user'] ?? (asMap(j['customer_data'])),
+    );
+    final fixerMap = asMap(
+      j['fixer'] ?? j['assigned_to'] ?? j['fixer_data'] ?? {},
+    );
     final scheduledRaw = j['scheduled_at'] ?? j['schedule'] ?? j['scheduledAt'];
+    bool isTruthy(dynamic value) {
+      if (value is bool) return value;
+      if (value is num) return value != 0;
+      if (value is String) {
+        final normalized = value.trim().toLowerCase();
+        return normalized == 'true' ||
+            normalized == '1' ||
+            normalized == 'yes' ||
+            normalized == 'y';
+      }
+      return false;
+    }
+
+    String? firstNonEmpty(Iterable<dynamic> values) {
+      for (final raw in values) {
+        if (raw == null) continue;
+        final str = raw.toString().trim();
+        if (str.isNotEmpty && str.toLowerCase() != 'null') return str;
+      }
+      return null;
+    }
+
     final status = (j['status'] ?? j['state'] ?? 'pending').toString();
     final loc = j['location']?.toString();
-    final contactVisible = (j['customer_contact_visible'] == true);
-    String? contact;
-    if (contactVisible && custMap.isNotEmpty) {
-      final rawContact = custMap['contact_number'] ?? custMap['phone'] ?? custMap['mobile'] ?? custMap['telephone'];
-      if (rawContact != null) {
-        final str = rawContact.toString().trim();
-        if (str.isNotEmpty) contact = str;
-      }
-    }
+    final statusLower = status.toLowerCase();
+    final contactVisible =
+        isTruthy(j['customer_contact_visible']) ||
+        statusLower == 'accepted' ||
+        statusLower == 'completed';
+    final contact = contactVisible
+        ? firstNonEmpty([
+            j['customer_contact'],
+            j['contact'],
+            custMap['contact_number'],
+            custMap['phone'],
+            custMap['mobile'],
+            custMap['telephone'],
+            custMap['phone_number'],
+            custMap['mobile_number'],
+            custMap['primary_phone'],
+            custMap['contact'],
+          ])
+        : null;
 
     // Build Service safely
     final serviceId = parseId(svcMap['id'] ?? j['service_id']);
-    final serviceName = (svcMap['name'] ?? j['service_name'] ?? 'Service').toString();
+    final serviceName = (svcMap['name'] ?? j['service_name'] ?? 'Service')
+        .toString();
 
     // Build Customer safely
     Customer customer;
@@ -76,7 +114,13 @@ class ServiceRequest {
       // Minimal placeholder when only fixer_id known
       fixer = Fixer(
         id: parseId(j['fixer_id']),
-        user: User(id: 0, firstName: null, lastName: null, email: '', profilePhotoUrl: null),
+        user: User(
+          id: 0,
+          firstName: null,
+          lastName: null,
+          email: '',
+          profilePhotoUrl: null,
+        ),
         bio: null,
         availability: 'available',
         ratingAvg: null,
@@ -134,6 +178,7 @@ class Customer {
       if (v is String) return int.tryParse(v) ?? 0;
       return 0;
     }
+
     final first = (j['first_name'] ?? j['firstName'] ?? '').toString();
     final last = (j['last_name'] ?? j['lastName'] ?? '').toString();
     final combined = ('$first $last').trim();
@@ -141,8 +186,5 @@ class Customer {
     return Customer(id: parseId(j['id']), name: name);
   }
 
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-      };
+  Map<String, dynamic> toJson() => {'id': id, 'name': name};
 }

@@ -19,8 +19,9 @@ class FixerService {
 
   final AppSync _sync;
   final _api = ApiClient.I;
-  static final ValueNotifier<int?> priorityPointsNotifier =
-      ValueNotifier<int?>(null);
+  static final ValueNotifier<int?> priorityPointsNotifier = ValueNotifier<int?>(
+    null,
+  );
 
   static void broadcastPriorityPoints(int? value) {
     if (priorityPointsNotifier.value != value) {
@@ -181,14 +182,20 @@ class FixerService {
 
   // Fetch a single request detail (may include contact info)
   Future<Map<String, dynamic>?> requestDetail(int id) async {
-    final res = await _api.get('/api/requests/$id');
-    if (res.statusCode == 200) {
-      final root = jsonDecode(res.body);
-      if (root is Map<String, dynamic>) {
-        if (root['data'] is Map<String, dynamic>) {
-          return Map<String, dynamic>.from(root['data'] as Map);
+    for (final path in ['/api/fixer/requests/$id', '/api/requests/$id']) {
+      try {
+        final res = await _api.get(path);
+        if (res.statusCode == 200) {
+          final root = jsonDecode(res.body);
+          if (root is Map<String, dynamic>) {
+            if (root['data'] is Map<String, dynamic>) {
+              return Map<String, dynamic>.from(root['data'] as Map);
+            }
+            return Map<String, dynamic>.from(root);
+          }
         }
-        return Map<String, dynamic>.from(root);
+      } catch (_) {
+        // try next
       }
     }
 
