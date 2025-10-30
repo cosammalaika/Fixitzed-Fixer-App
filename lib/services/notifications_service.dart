@@ -17,7 +17,9 @@ class NotificationsService {
       if (root is Map<String, dynamic>) {
         // paginated: { data: { data: [...] } } or unpaginated: { data: [...] }
         final data = root['data'];
-        final list = (data is Map<String, dynamic>) ? (data['data'] as List?) : (data as List?);
+        final list = (data is Map<String, dynamic>)
+            ? (data['data'] as List?)
+            : (data as List?);
         if (list != null) {
           return list
               .map((e) => NotificationItem.fromJson(e as Map<String, dynamic>))

@@ -10,15 +10,17 @@ class ReportService {
     int? targetId,
   }) async {
     try {
-      final res = await _api.post('/api/reports', body: {
-        'type': type,
-        'subject': subject,
-        'message': message,
-        if (targetId != null) 'target_id': targetId.toString(),
-      });
+      final res = await _api.post(
+        '/api/reports',
+        body: {
+          'type': type,
+          'subject': subject,
+          'message': message,
+          if (targetId != null) 'target_id': targetId.toString(),
+        },
+      );
       if (res.statusCode >= 200 && res.statusCode < 300) return true;
     } catch (_) {}
     return false;
   }
 }
-

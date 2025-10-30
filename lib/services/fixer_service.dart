@@ -12,6 +12,7 @@ import 'package:fixitzed_fixer_app/models/fixer.dart';
 import 'package:fixitzed_fixer_app/models/service_request.dart';
 import 'package:fixitzed_fixer_app/services/api_client.dart';
 import 'package:fixitzed_fixer_app/services/local_notification_service.dart';
+import 'package:fixitzed_fixer_app/services/session_guard.dart';
 import 'package:fixitzed_fixer_app/state/app_sync.dart';
 
 class FixerService {
@@ -289,6 +290,7 @@ class FixerService {
     final req = await _api.multipart('/api/me/avatar', method: 'POST');
     req.files.add(await http.MultipartFile.fromPath('avatar', filePath));
     final streamed = await req.send();
+    await SessionGuard.evaluate(streamed);
     final ok = streamed.statusCode == 200;
     if (ok) {
       _emitProfile(action: 'avatarUpdated');

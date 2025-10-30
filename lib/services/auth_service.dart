@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:fixitzed_fixer_app/models/fixer.dart';
 import 'package:fixitzed_fixer_app/services/api_client.dart';
+import 'package:fixitzed_fixer_app/services/session_guard.dart';
+import 'package:fixitzed_fixer_app/services/session_manager.dart';
 
 class LoginResult {
   final bool success;
@@ -14,10 +16,7 @@ class PasswordResetResult {
   final bool success;
   final String message;
 
-  const PasswordResetResult({
-    required this.success,
-    required this.message,
-  });
+  const PasswordResetResult({required this.success, required this.message});
 }
 
 class AuthService {
@@ -27,10 +26,7 @@ class AuthService {
   Future<LoginResult> login(String identifier, String password) async {
     final res = await _api.post(
       '/api/login',
-      body: {
-        'identifier': identifier,
-        'password': password,
-      },
+      body: {'identifier': identifier, 'password': password},
     );
     if (res.statusCode != 200) {
       return const LoginResult(success: false);
@@ -72,7 +68,10 @@ class AuthService {
 
   bool _extractInactiveFlag(dynamic source) {
     if (source is Map<String, dynamic>) {
-      final statusRaw = source['status'] ?? source['account_status'] ?? source['accountStatus'];
+      final statusRaw =
+          source['status'] ??
+          source['account_status'] ??
+          source['accountStatus'];
       if (statusRaw is String && statusRaw.trim().isNotEmpty) {
         return statusRaw.trim().toLowerCase() != 'active';
       }
@@ -126,6 +125,7 @@ class AuthService {
       await _api.post('/api/logout', body: {});
     } finally {
       await _api.setToken(null);
+      await SessionManager.instance.finalizeLogout(reason: 'manual');
     }
   }
 
@@ -139,6 +139,7 @@ class AuthService {
         await http.MultipartFile.fromPath('profile_photo', trimmed),
       );
       final streamed = await request.send();
+      await SessionGuard.evaluate(streamed);
       return streamed.statusCode >= 200 && streamed.statusCode < 300;
     } catch (_) {
       return false;
@@ -149,18 +150,18 @@ class AuthService {
     try {
       final res = await _api.post(
         '/api/password/forgot',
-        body: {
-          'identifier': identifier,
-        },
+        body: {'identifier': identifier},
       );
       return _mapResetResponse(
         res,
-        fallbackSuccess: 'If we find a matching account, a reset code will be emailed shortly.',
+        fallbackSuccess:
+            'If we find a matching account, a reset code will be emailed shortly.',
       );
     } catch (_) {
       return const PasswordResetResult(
         success: false,
-        message: 'Unable to submit the reset request. Check your connection and try again.',
+        message:
+            'Unable to submit the reset request. Check your connection and try again.',
       );
     }
   }
@@ -183,12 +184,14 @@ class AuthService {
       );
       return _mapResetResponse(
         res,
-        fallbackSuccess: 'Password updated successfully. You can now sign in with your new password.',
+        fallbackSuccess:
+            'Password updated successfully. You can now sign in with your new password.',
       );
     } catch (_) {
       return const PasswordResetResult(
         success: false,
-        message: 'Unable to update the password right now. Please try again in a moment.',
+        message:
+            'Unable to update the password right now. Please try again in a moment.',
       );
     }
   }

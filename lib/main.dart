@@ -18,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:fixitzed_fixer_app/common/connectivity/connectivity_overlay.dart';
+import 'package:fixitzed_fixer_app/widgets/session_redirector.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,8 +67,10 @@ class FixerApp extends ConsumerWidget {
             '/about': (context) => const AboutScreen(),
             '/account_blocked': (context) => const AccountBlockedScreen(),
           },
-          builder: (context, child) =>
-              ConnectivityOverlay(child: child ?? const SizedBox.shrink()),
+          builder: (context, child) {
+            final body = child ?? const SizedBox.shrink();
+            return SessionRedirector(child: ConnectivityOverlay(child: body));
+          },
         );
       },
     );

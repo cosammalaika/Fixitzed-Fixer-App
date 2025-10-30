@@ -7,17 +7,21 @@ import 'package:intl/intl.dart';
 class LocalNotificationService {
   LocalNotificationService._internal();
 
-  static final LocalNotificationService instance = LocalNotificationService._internal();
+  static final LocalNotificationService instance =
+      LocalNotificationService._internal();
 
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
   bool _initialized = false;
 
-  static const AndroidNotificationChannel _defaultChannel = AndroidNotificationChannel(
-    'fixitzed_fixer_default',
-    'Fixer Alerts',
-    description: 'Job assignments, reminders and announcements for FixitZED Fixers.',
-    importance: Importance.high,
-  );
+  static const AndroidNotificationChannel _defaultChannel =
+      AndroidNotificationChannel(
+        'fixitzed_fixer_default',
+        'Fixer Alerts',
+        description:
+            'Job assignments, reminders and announcements for FixitZED Fixers.',
+        importance: Importance.high,
+      );
 
   Future<void> init() async {
     if (_initialized) return;
@@ -26,7 +30,9 @@ class LocalNotificationService {
       return;
     }
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     final darwinSettings = DarwinInitializationSettings(
       requestAlertPermission: false,
       requestBadgePermission: false,
@@ -41,20 +47,34 @@ class LocalNotificationService {
     await _plugin.initialize(settings);
 
     if (Platform.isAndroid) {
-      final androidSpecific =
-          _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+      final androidSpecific = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       if (androidSpecific != null) {
         await androidSpecific.createNotificationChannel(_defaultChannel);
         await androidSpecific.requestNotificationsPermission();
       }
     } else if (Platform.isIOS) {
-      final iosSpecific =
-          _plugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
-      await iosSpecific?.requestPermissions(alert: true, badge: true, sound: true);
+      final iosSpecific = _plugin
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >();
+      await iosSpecific?.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
     } else if (Platform.isMacOS) {
-      final macSpecific =
-          _plugin.resolvePlatformSpecificImplementation<MacOSFlutterLocalNotificationsPlugin>();
-      await macSpecific?.requestPermissions(alert: true, badge: true, sound: true);
+      final macSpecific = _plugin
+          .resolvePlatformSpecificImplementation<
+            MacOSFlutterLocalNotificationsPlugin
+          >();
+      await macSpecific?.requestPermissions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
     }
 
     _initialized = true;
@@ -78,10 +98,7 @@ class LocalNotificationService {
         channelDescription: _defaultChannel.description,
         importance: Importance.high,
         priority: Priority.high,
-        styleInformation: BigTextStyleInformation(
-          body,
-          contentTitle: title,
-        ),
+        styleInformation: BigTextStyleInformation(body, contentTitle: title),
       ),
       iOS: const DarwinNotificationDetails(),
     );

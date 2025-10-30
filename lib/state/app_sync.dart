@@ -3,8 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AppSyncEvent {
-  AppSyncEvent(this.topic, {this.payload})
-      : timestamp = DateTime.now().toUtc();
+  AppSyncEvent(this.topic, {this.payload}) : timestamp = DateTime.now().toUtc();
 
   final String topic;
   final Object? payload;
@@ -43,6 +42,7 @@ class AppSyncTopic {
   static const requests = 'requests';
   static const wallet = 'wallet';
   static const profile = 'profile';
+  static const auth = 'auth';
 }
 
 extension AppSyncRef on Ref {
