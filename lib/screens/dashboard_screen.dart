@@ -12,6 +12,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:fixitzed_fixer_app/widgets/skeletons.dart';
+import 'package:fixitzed_fixer_app/widgets/swipe_action_button.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -1148,40 +1149,33 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: ElevatedButton(
-                        onPressed: (!widget.canAccept || _processing)
-                            ? null
-                            : () async {
-                                setState(() => _processing = true);
-                                final ok = await widget.onAccept();
-                                if (!mounted) return;
-                                setState(() => _processing = false);
-                                if (!ok) {
-                                  AppSnack.show(
-                                    context,
-                                    message:
-                                        'Failed to accept request. Try again.',
-                                    success: false,
-                                  );
-                                  return;
-                                }
-                                Navigator.of(
-                                  context,
-                                ).pop(_RequestSheetResult.accepted);
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: brand,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        child: Text(
-                          _processing ? 'Accepting…' : 'Accept request',
-                          style: GoogleFonts.urbanist(
-                            fontWeight: FontWeight.w700,
-                          ),
+                      child: SizedBox(
+                        height: 56,
+                        child: SwipeActionButton(
+                          label: widget.canAccept
+                              ? 'Swipe to accept'
+                              : 'Subscription required',
+                          loadingLabel: 'Accepting…',
+                          trackColor: brand,
+                          enabled: widget.canAccept && !_processing,
+                          onCompleted: () async {
+                            setState(() => _processing = true);
+                            final ok = await widget.onAccept();
+                            if (!mounted) return ok;
+                            if (!ok) {
+                              setState(() => _processing = false);
+                              AppSnack.show(
+                                context,
+                                message: 'Failed to accept request. Try again.',
+                                success: false,
+                              );
+                            } else {
+                              Navigator.of(
+                                context,
+                              ).pop(_RequestSheetResult.accepted);
+                            }
+                            return ok;
+                          },
                         ),
                       ),
                     ),

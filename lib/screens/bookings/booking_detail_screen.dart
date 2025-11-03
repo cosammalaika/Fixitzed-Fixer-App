@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:fixitzed_fixer_app/services/fixer_service.dart';
 import 'package:fixitzed_fixer_app/ui/snack.dart';
+import 'package:fixitzed_fixer_app/widgets/swipe_action_button.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -217,11 +218,11 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     setState(() => _processing = value);
   }
 
-  Future<void> _acceptRequest() async {
+  Future<bool> _acceptRequest() async {
     await _setProcessing(true);
     final ok = await widget.fixerService.acceptRequest(_requestId);
     await _setProcessing(false);
-    if (!mounted) return;
+    if (!mounted) return ok;
     AppSnack.show(
       context,
       message: ok ? 'Request accepted' : 'Failed to accept request',
@@ -235,6 +236,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
       );
       Navigator.of(context).pop(true);
     }
+    return ok;
   }
 
   Future<void> _cancelRequest() async {
@@ -833,19 +835,16 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ElevatedButton.icon(
-          onPressed: _processing || !canAccept ? null : _acceptRequest,
-          icon: const Icon(Icons.check_circle_outline_rounded),
-          label: Text(
-            _processing && canAccept ? 'Processing…' : 'Accept booking',
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: brand,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
+        SizedBox(
+          height: 56,
+          child: SwipeActionButton(
+            label: canAccept
+                ? 'Swipe to accept booking'
+                : 'Already accepted',
+            loadingLabel: 'Accepting…',
+            enabled: canAccept && !_processing,
+            trackColor: brand,
+            onCompleted: _acceptRequest,
           ),
         ),
         const SizedBox(height: 12),

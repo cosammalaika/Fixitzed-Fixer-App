@@ -68,6 +68,18 @@ class NotificationsService {
     return ok;
   }
 
+  Future<bool> delete(int id) async {
+    final res = await _api.delete('/api/notifications/$id');
+    final ok = res.statusCode >= 200 && res.statusCode < 300;
+    if (ok) {
+      _sync.emit(
+        AppSyncTopic.notifications,
+        payload: <String, dynamic>{'action': 'delete', 'id': id},
+      );
+    }
+    return ok;
+  }
+
   bool _isForFixerAudience(NotificationItem item) {
     final type = item.recipientType.trim().toLowerCase();
     if (type.isEmpty) return true;

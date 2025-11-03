@@ -19,6 +19,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _loading = true;
   List<NotificationItem> _items = const [];
   StreamSubscription<AppSyncEvent>? _subscription;
+  final Set<int> _deleting = <int>{};
 
   @override
   void initState() {
@@ -57,6 +58,72 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   bool _isYesterday(DateTime d) {
     final y = DateTime.now().subtract(const Duration(days: 1));
     return d.year == y.year && d.month == y.month && d.day == y.day;
+  }
+
+  Widget _dismissBackground() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFD84343),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      alignment: Alignment.centerRight,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: const Icon(
+        Icons.delete_outline_rounded,
+        color: Colors.white,
+        size: 26,
+      ),
+    );
+  }
+
+  Future<bool> _confirmDelete(NotificationItem notification) async {
+    if (_deleting.contains(notification.id)) return false;
+    setState(() => _deleting.add(notification.id));
+    final ok = await _svc.delete(notification.id);
+    if (!mounted) return false;
+    setState(() => _deleting.remove(notification.id));
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Failed to delete notification',
+            style: GoogleFonts.urbanist(),
+          ),
+          backgroundColor: const Color(0xFFD84343),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+    return ok;
+  }
+
+  void _removeNotification(NotificationItem notification) {
+    if (!mounted) return;
+    setState(() {
+      _items = _items.where((item) => item.id != notification.id).toList();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Notification removed',
+          style: GoogleFonts.urbanist(color: Colors.white),
+        ),
+        backgroundColor: const Color(0xFF2E7D32),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  Widget _dismissibleTile(NotificationItem notification) {
+    return Dismissible(
+      key: ValueKey<String>('notif_${notification.id}'),
+      direction: DismissDirection.endToStart,
+      secondaryBackground: _dismissBackground(),
+      confirmDismiss: (_) => _confirmDelete(notification),
+      onDismissed: (_) => _removeNotification(notification),
+      child: _tile(notification),
+    );
   }
 
   Widget _tile(NotificationItem n) {
@@ -205,7 +272,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ],
                     ),
                     const SizedBox(height: 6),
-                    ...today.map(_tile),
+                    ...today.map(_dismissibleTile),
                     const SizedBox(height: 18),
                   ],
                   if (yesterday.isNotEmpty) ...[
@@ -217,7 +284,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    ...yesterday.map(_tile),
+                    ...yesterday.map(_dismissibleTile),
                     const SizedBox(height: 18),
                   ],
                   if (earlier.isNotEmpty) ...[
@@ -229,7 +296,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    ...earlier.map(_tile),
+                    ...earlier.map(_dismissibleTile),
                   ],
                   if (today.isEmpty && yesterday.isEmpty && earlier.isEmpty)
                     Padding(
