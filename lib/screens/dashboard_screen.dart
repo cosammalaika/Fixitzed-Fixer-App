@@ -14,6 +14,8 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:fixitzed_fixer_app/widgets/skeletons.dart';
 import 'package:fixitzed_fixer_app/widgets/swipe_action_button.dart';
 
+const Color _fixerAcceptColor = Color(0xFF2E7D32);
+
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
@@ -157,9 +159,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final isInitialLoading = dashboardAsync.isLoading && snapshot == null;
 
     if (isInitialLoading) {
-      return const Scaffold(
-        body: FixerDashboardSkeleton(),
-      );
+      return const Scaffold(body: FixerDashboardSkeleton());
     }
 
     if (snapshot == null) {
@@ -169,9 +169,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           title: 'You\'re offline',
           message:
               'We couldn’t refresh your dashboard. Connect to the internet and try again.',
-          onRetry: () => ref
-              .read(fixerDashboardControllerProvider.notifier)
-              .refresh(),
+          onRetry: () =>
+              ref.read(fixerDashboardControllerProvider.notifier).refresh(),
           details: kDebugMode && err != null ? err.toString() : null,
         ),
       );
@@ -182,9 +181,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final activeCount =
         bookingState?.active.length ??
         snapshot.activeRequests
-            .where(
-              (r) => r.status != 'completed' && r.status != 'cancelled',
-            )
+            .where((r) => r.status != 'completed' && r.status != 'cancelled')
             .length;
     final isRefreshing = dashboardAsync.isLoading;
 
@@ -350,10 +347,7 @@ class _ErrorBanner extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          TextButton(
-            onPressed: onRetry,
-            child: const Text('Retry'),
-          ),
+          TextButton(onPressed: onRetry, child: const Text('Retry')),
         ],
       ),
     );
@@ -1156,7 +1150,10 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
                               ? 'Swipe to accept'
                               : 'Subscription required',
                           loadingLabel: 'Accepting…',
-                          trackColor: brand,
+                          releaseLabel: widget.canAccept
+                              ? 'Release to accept'
+                              : 'Subscription required',
+                          trackColor: _fixerAcceptColor,
                           enabled: widget.canAccept && !_processing,
                           onCompleted: () async {
                             setState(() => _processing = true);

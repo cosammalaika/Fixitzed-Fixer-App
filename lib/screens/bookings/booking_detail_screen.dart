@@ -696,7 +696,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  _actionSection(status, brand),
+                  _actionSection(status, const Color(0xFF2E7D32)),
                   const SizedBox(height: 12),
                 ],
               ),
@@ -838,10 +838,9 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
         SizedBox(
           height: 56,
           child: SwipeActionButton(
-            label: canAccept
-                ? 'Swipe to accept booking'
-                : 'Already accepted',
+            label: canAccept ? 'Swipe to accept booking' : 'Already accepted',
             loadingLabel: 'Accepting…',
+            releaseLabel: 'Release to accept',
             enabled: canAccept && !_processing,
             trackColor: brand,
             onCompleted: _acceptRequest,
