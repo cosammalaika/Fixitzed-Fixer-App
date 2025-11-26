@@ -251,7 +251,10 @@ class _BookingsListScreenState extends State<BookingsListScreen>
               final result = await Navigator.pushNamed<bool>(
                 context,
                 '/booking_detail',
-                arguments: r.id,
+                arguments: {
+                  'id': r.id,
+                  'request': r.toJson(),
+                },
               );
               if (!mounted) return;
               if (result == true) {

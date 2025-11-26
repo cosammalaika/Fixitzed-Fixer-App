@@ -23,17 +23,53 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
   final _fixer = FixerService();
   bool _loading = true;
   Map<String, dynamic>? _detail;
+  int? _id;
+  bool _initialized = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final id = ModalRoute.of(context)?.settings.arguments as int?;
-    if (id != null && _loading) {
-      _load(id);
+    if (_initialized) return;
+    _initialized = true;
+    final payload = _parsePayload(
+      ModalRoute.of(context)?.settings.arguments,
+    );
+    _id = payload.id;
+    if (payload.detail != null) {
+      _detail = payload.detail;
+      _loading = false;
+    }
+    if (_id != null) {
+      _load(_id!);
     }
   }
 
+  _Payload _parsePayload(dynamic args) {
+    if (args is Map) {
+      final map = args.map((key, value) => MapEntry(key.toString(), value));
+      final id = _parseId(map['id'] ?? map['requestId'] ?? map['request_id']);
+      Map<String, dynamic>? detail;
+      final rawDetail = map['request'] ?? map['detail'] ?? map['data'];
+      if (rawDetail is Map) {
+        detail =
+            rawDetail.map((key, value) => MapEntry(key.toString(), value));
+      }
+      return _Payload(id: id, detail: detail);
+    }
+    return _Payload(id: _parseId(args));
+  }
+
+  int? _parseId(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value.trim());
+    return null;
+  }
+
   Future<void> _load(int id) async {
+    setState(() {
+      _loading = _detail == null;
+    });
     final detail = await _fetchDetail(id);
     if (!mounted) return;
     if (detail == null) {
@@ -116,6 +152,12 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   )),
     );
   }
+}
+
+class _Payload {
+  final int? id;
+  final Map<String, dynamic>? detail;
+  _Payload({this.id, this.detail});
 }
 
 class _FixerBookingSheet extends StatefulWidget {

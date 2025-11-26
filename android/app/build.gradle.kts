@@ -17,7 +17,8 @@ android {
     }
     namespace = "com.fixitzed.fixer"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    // Flutter's default NDK (28.2.13676358) is missing locally; use an installed version to unblock builds.
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true

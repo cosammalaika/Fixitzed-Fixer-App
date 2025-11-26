@@ -183,20 +183,50 @@ class FixerService {
 
   // Fetch a single request detail (may include contact info)
   Future<Map<String, dynamic>?> requestDetail(int id) async {
-    for (final path in ['/api/fixer/requests/$id', '/api/requests/$id']) {
+    final targets = [
+      '/api/fixer/requests/$id',
+      '/api/fixer/service-requests/$id',
+      '/api/service-requests/$id',
+      '/api/requests/$id',
+      '/api/bookings/$id',
+      '/api/fixer/bookings/$id',
+    ];
+
+    for (final path in targets) {
       try {
         final res = await _api.get(path);
         if (res.statusCode == 200) {
           final root = jsonDecode(res.body);
-          if (root is Map<String, dynamic>) {
-            if (root['data'] is Map<String, dynamic>) {
-              return Map<String, dynamic>.from(root['data'] as Map);
-            }
-            return Map<String, dynamic>.from(root);
-          }
+          final unwrapped = _unwrapRequest(root);
+          if (unwrapped != null) return unwrapped;
         }
       } catch (_) {
         // try next
+      }
+    }
+
+    // Fallback: search collection endpoints
+    for (final path in [
+      '/api/fixer/requests',
+      '/api/service-requests',
+      '/api/requests',
+      '/api/bookings',
+    ]) {
+      try {
+        final res = await _api.get(path);
+        if (res.statusCode != 200) continue;
+        final root = jsonDecode(res.body);
+        final list = _unwrapRequestList(root);
+        if (list == null) continue;
+        final match = list.firstWhere(
+          (row) => _matchesId(row, id),
+          orElse: () => const <String, dynamic>{},
+        );
+        if (match.isNotEmpty) {
+          return Map<String, dynamic>.from(match);
+        }
+      } catch (_) {
+        // continue to next fallback
       }
     }
 
@@ -211,6 +241,54 @@ class FixerService {
   }
 
   final Map<int, Map<String, dynamic>> _declinedCache = {};
+
+  Map<String, dynamic>? _unwrapRequest(dynamic root) {
+    if (root is Map<String, dynamic>) {
+      for (final key in [
+        'data',
+        'request',
+        'service_request',
+        'serviceRequest',
+        'booking',
+      ]) {
+        final inner = root[key];
+        if (inner is Map) return Map<String, dynamic>.from(inner);
+      }
+      return Map<String, dynamic>.from(root);
+    }
+    return null;
+  }
+
+  List<Map<String, dynamic>>? _unwrapRequestList(dynamic root) {
+    List? raw;
+    if (root is List) raw = root;
+    if (root is Map<String, dynamic>) {
+      if (root['data'] is List) raw = root['data'] as List;
+      if (root['data'] is Map && (root['data'] as Map)['data'] is List) {
+        raw = (root['data'] as Map)['data'] as List;
+      }
+      if (raw == null && root['requests'] is List) {
+        raw = root['requests'] as List;
+      }
+      raw ??= root.values.firstWhere(
+        (v) => v is List,
+        orElse: () => const [],
+      ) as List;
+    }
+    if (raw == null) return null;
+    return raw.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+  }
+
+  bool _matchesId(Map<String, dynamic> data, int id) {
+    final raw = data['id'] ?? data['request_id'] ?? data['requestId'];
+    if (raw is int && raw == id) return true;
+    if (raw is num && raw.toInt() == id) return true;
+    if (raw is String) {
+      final parsed = int.tryParse(raw);
+      if (parsed != null && parsed == id) return true;
+    }
+    return false;
+  }
 
   /// Fetch wallet ledger entries with optional filters.
   Future<List<Map<String, dynamic>>> walletHistory({String? filter}) async {
