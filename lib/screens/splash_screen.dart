@@ -6,8 +6,7 @@ class SplashScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Future.microtask(() async {
-      await Future.delayed(const Duration(seconds: 1));
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!context.mounted) return;
       final prefs = await SharedPreferences.getInstance();
       final hasSeen = prefs.getBool('fixer_onboarding_seen') ?? false;
@@ -17,7 +16,8 @@ class SplashScreen extends StatelessWidget {
     });
 
     return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
+      // Blank splash: we immediately navigate; no spinner flash.
+      body: SizedBox.expand(),
     );
   }
 }
