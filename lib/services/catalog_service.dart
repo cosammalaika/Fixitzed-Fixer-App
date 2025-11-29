@@ -40,7 +40,8 @@ class CatalogService {
       };
     }
 
-    final grouped = <int, List<ServiceCatalogItem>>{};
+    final groupedBySubcategory = <int, List<ServiceCatalogItem>>{};
+    final groupedByCategory = <int, List<ServiceCatalogItem>>{};
     for (final raw in services) {
       final id = _parseInt(raw['id']);
       final subId = _parseInt(raw['subcategory_id']);
@@ -65,59 +66,45 @@ class CatalogService {
         price: price,
         subcategoryName: sub?['name']?.toString(),
       );
-      grouped.putIfAbsent(categoryId, () => <ServiceCatalogItem>[]).add(item);
+      groupedBySubcategory.putIfAbsent(subId, () => <ServiceCatalogItem>[]).add(item);
+      groupedByCategory.putIfAbsent(categoryId, () => <ServiceCatalogItem>[]).add(item);
     }
 
     final sections = <ServiceCatalogSection>[];
-    grouped.forEach((categoryId, items) {
-      final name = categoryNames[categoryId] ?? 'Category $categoryId';
-      items.sort((a, b) => a.name.compareTo(b.name));
-      sections.add(
-        ServiceCatalogSection(id: categoryId, name: name, items: items),
-      );
-    });
+    // Prefer grouping by subcategory to ensure all catalogs surface even if
+    // categories API is sparse; fall back to category grouping when no
+    // subcategory is available.
+    if (groupedBySubcategory.isNotEmpty) {
+      groupedBySubcategory.forEach((subId, items) {
+        items.sort((a, b) => a.name.compareTo(b.name));
+        final sub = subcategoryIndex[subId];
+        final subName = sub?['name']?.toString();
+        final catName =
+            categoryNames[_parseInt(sub?['category_id']) ?? -1] ?? 'Services';
+        final name =
+            (subName != null && subName.isNotEmpty) ? subName : catName;
+        sections.add(
+          ServiceCatalogSection(id: subId, name: name, items: items),
+        );
+      });
+    } else {
+      groupedByCategory.forEach((categoryId, items) {
+        final name = categoryNames[categoryId] ?? 'Category $categoryId';
+        items.sort((a, b) => a.name.compareTo(b.name));
+        sections.add(
+          ServiceCatalogSection(id: categoryId, name: name, items: items),
+        );
+      });
+    }
 
     sections.sort((a, b) => a.name.compareTo(b.name));
 
-    final normalized = <ServiceCatalogSection>[];
-    for (final section in sections) {
-      final bySubcategory = <int?, List<ServiceCatalogItem>>{};
-      for (final item in section.items) {
-        final key = item.subcategoryId == 0 ? null : item.subcategoryId;
-        bySubcategory.putIfAbsent(key, () => <ServiceCatalogItem>[]).add(item);
-      }
-
-      if (bySubcategory.length > 1) {
-        final entries = bySubcategory.entries.toList()
-          ..sort((a, b) {
-            final aName =
-                a.value.first.subcategoryName?.trim().toLowerCase() ?? '';
-            final bName =
-                b.value.first.subcategoryName?.trim().toLowerCase() ?? '';
-            return aName.compareTo(bName);
-          });
-        var fallbackIndex = 0;
-        for (final entry in entries) {
-          fallbackIndex += 1;
-          final items = List<ServiceCatalogItem>.from(entry.value)
-            ..sort((a, b) => a.name.compareTo(b.name));
-          final rawName = items.first.subcategoryName?.trim();
-          final name = (rawName != null && rawName.isNotEmpty)
-              ? rawName
-              : '${section.name} $fallbackIndex';
-          final subcategoryId =
-              entry.key ?? -(section.id * 1000 + fallbackIndex);
-          normalized.add(
-            ServiceCatalogSection(id: subcategoryId, name: name, items: items),
-          );
-        }
-      } else {
-        normalized.add(section);
-      }
+    // Fallback: if API returns unexpectedly few sections, use bundled catalog.
+    if (sections.length <= 2) {
+      return _fallbackCatalog();
     }
 
-    normalized.sort((a, b) => a.name.compareTo(b.name));
-    return normalized;
+    return sections;
   }
 
   List<Map<String, dynamic>> _toMapMap(http.Response response) {
@@ -171,5 +158,160 @@ class CatalogService {
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value);
     return null;
+  }
+
+  List<ServiceCatalogSection> _fallbackCatalog() {
+    const catalog = {
+      'Plumbing': [
+        'Leak Repair',
+        'Pipe Installation',
+        'Bathroom Fittings',
+        'Water Heater Installation',
+        'Drainage Unblocking',
+        'Toilet Repair & Installation',
+        'Kitchen Sink Installation',
+        'Septic Tank Maintenance',
+        'Shower & Bathtub Installation',
+        'Water Pump Installation',
+      ],
+      'Electrical': [
+        'Wiring & Rewiring',
+        'Lighting Installation',
+        'Appliance Repair',
+        'Generator Installation',
+        'Solar Panel Installation',
+        'Socket Installation & Repair',
+        'Switch Installation & Repair',
+        'Circuit Breaker Replacement',
+        'Ceiling Fan Installation',
+        'Backup Power Solutions',
+        'Inverter Setup',
+        'Smart Lighting Setup',
+      ],
+      'Cleaning': [
+        'House Cleaning',
+        'Carpet Cleaning',
+        'Sofa & Upholstery Cleaning',
+        'Deep Cleaning',
+        'Office Cleaning',
+        'Post-Construction Cleaning',
+        'Window Cleaning',
+        'Mattress Cleaning',
+        'Kitchen Degreasing',
+      ],
+      'Carpentry': [
+        'Furniture Repair',
+        'Custom Furniture',
+        'Door & Window Repair',
+        'Wood Polishing',
+        'Cabinet Installation',
+        'Bed & Wardrobe Assembly',
+        'Decking & Pergola Building',
+      ],
+      'Painting': [
+        'Interior Painting',
+        'Exterior Painting',
+        'Waterproofing',
+        'Wallpaper Installation',
+        'Decorative Wall Finishes',
+        'Spray Painting',
+      ],
+      'Gardening & Landscaping': [
+        'Lawn Mowing',
+        'Garden Maintenance',
+        'Tree Trimming',
+        'Landscaping Design',
+        'Irrigation System Installation',
+        'Hedge Trimming',
+        'Garden Soil & Fertilizer Supply',
+        'Greenhouse Setup',
+      ],
+      'Pest Control': [
+        'General Pest Control',
+        'Termite Treatment',
+        'Rodent Control',
+        'Fumigation',
+        'Bed Bug Treatment',
+        'Mosquito Control',
+        'Cockroach Control',
+      ],
+      'Appliance Services': [
+        'Refrigerator Repair',
+        'Washing Machine Repair',
+        'Air Conditioner Service',
+        'Microwave Repair',
+        'Oven & Stove Repair',
+        'TV Mounting & Setup',
+        'Dishwasher Repair',
+        'Freezer Repair',
+      ],
+      'Security Services': [
+        'CCTV Installation',
+        'Alarm System Installation',
+        'Security Fencing',
+        'Smart Lock Installation',
+        'Intercom System Setup',
+        'Motion Sensor Setup',
+      ],
+      'Moving & Relocation': [
+        'House Moving',
+        'Office Relocation',
+        'Packing & Unpacking',
+        'Furniture Assembly',
+        'Storage Services',
+        'International Relocation',
+      ],
+      'Roofing & Masonry': [
+        'Roof Repair',
+        'Roof Installation',
+        'Tiling',
+        'Bricklaying',
+        'Plastering & Skimming',
+        'Concrete Works',
+      ],
+      'HVAC Services': [
+        'AC Installation',
+        'AC Repair',
+        'Ventilation System Setup',
+        'Heater Installation',
+        'Duct Cleaning',
+      ],
+      'IT & Smart Home': [
+        'WiFi Setup',
+        'Smart TV Setup',
+        'Home Automation Devices',
+        'Computer Repair',
+        'Smart Speaker Setup',
+        'Home Theater Installation',
+      ],
+      'Custom Service': [
+        'Other - Specify Your Service',
+      ],
+    };
+
+    var sectionId = 1;
+    var serviceId = 1;
+    final sections = <ServiceCatalogSection>[];
+    catalog.forEach((category, services) {
+      final items = services.map((name) {
+        final item = ServiceCatalogItem(
+          id: serviceId++,
+          name: name,
+          categoryId: sectionId,
+          subcategoryId: sectionId,
+          price: 0,
+          subcategoryName: category,
+        );
+        return item;
+      }).toList();
+      sections.add(ServiceCatalogSection(
+        id: sectionId,
+        name: category,
+        items: items,
+      ));
+      sectionId++;
+    });
+
+    return sections;
   }
 }
