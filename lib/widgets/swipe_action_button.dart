@@ -275,50 +275,53 @@ class _SwipeActionButtonState extends State<SwipeActionButton>
                         ),
                       ),
                     ),
-                    if (_processing)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
+                    Padding(
+                      padding: EdgeInsets.only(left: knobSize + 12, right: 12),
+                      child: _processing
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    valueColor: const AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                    strokeWidth: 2.4,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  widget.loadingLabel ?? 'Processing…',
+                                  style: labelStyle,
+                                ),
+                              ],
+                            )
+                          : AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 170),
+                              transitionBuilder: (child, animation) =>
+                                  FadeTransition(opacity: animation, child: child),
+                              child: Container(
+                                key: ValueKey<bool>(showReleaseLabel),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 18,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(
+                                    0.18 + (progress * 0.22),
+                                  ),
+                                  borderRadius: BorderRadius.circular(height),
+                                ),
+                                child: Text(
+                                  displayLabel,
+                                  style: labelStyle,
+                                ),
                               ),
-                              strokeWidth: 2.4,
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            widget.loadingLabel ?? 'Processing…',
-                            style: labelStyle,
-                          ),
-                        ],
-                      )
-                    else
-                      AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 170),
-                        transitionBuilder: (child, animation) =>
-                            FadeTransition(opacity: animation, child: child),
-                        child: Container(
-                          key: ValueKey<bool>(showReleaseLabel),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(
-                              0.18 + (progress * 0.22),
-                            ),
-                            borderRadius: BorderRadius.circular(height),
-                          ),
-                          child: Text(
-                            displayLabel,
-                            style: labelStyle,
-                          ),
-                        ),
-                      ),
+                    ),
                     Positioned(
                       left: 6 + offset,
                       child: Container(

@@ -1143,37 +1143,51 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: SizedBox(
-                        height: 56,
-                        child: SwipeActionButton(
-                          label: widget.canAccept
-                              ? 'Swipe to accept'
-                              : 'Subscription required',
-                          loadingLabel: 'Accepting…',
-                          releaseLabel: widget.canAccept
-                              ? 'Release to accept'
-                              : 'Subscription required',
-                          trackColor: _fixerAcceptColor,
-                          enabled: widget.canAccept && !_processing,
-                          onCompleted: () async {
-                            setState(() => _processing = true);
-                            final ok = await widget.onAccept();
-                            if (!mounted) return ok;
-                            if (!ok) {
-                              setState(() => _processing = false);
-                              AppSnack.show(
-                                context,
-                                message: 'Failed to accept request. Try again.',
-                                success: false,
-                              );
-                            } else {
-                              Navigator.of(
-                                context,
-                              ).pop(_RequestSheetResult.accepted);
-                            }
-                            return ok;
-                          },
+                      child: ElevatedButton(
+                        onPressed: (!widget.canAccept || _processing)
+                            ? null
+                            : () async {
+                                setState(() => _processing = true);
+                                final ok = await widget.onAccept();
+                                if (!mounted) return;
+                                if (!ok) {
+                                  setState(() => _processing = false);
+                                  AppSnack.show(
+                                    context,
+                                    message: 'Failed to accept request. Try again.',
+                                    success: false,
+                                  );
+                                } else {
+                                  Navigator.of(
+                                    context,
+                                  ).pop(_RequestSheetResult.accepted);
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _fixerAcceptColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
+                        child: _processing
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                widget.canAccept
+                                    ? 'Accept request'
+                                    : 'Subscription required',
+                                style: GoogleFonts.urbanist(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                       ),
                     ),
                   ],
