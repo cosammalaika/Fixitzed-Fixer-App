@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "325461034804",
+    "project_id": "fixitzed-app-37b67",
+    "storage_bucket": "fixitzed-app-37b67.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:325461034804:android:d69dadc4029cd52ffcc761",
+        "android_client_info": {
+          "package_name": "com.fixitzed.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCseW0Py98s_caM-8ApOCX5CF1FQBtQBo0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:325461034804:android:557f531eb2f4326afcc761",
+        "android_client_info": {
+          "package_name": "com.fixitzed.fixer"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCseW0Py98s_caM-8ApOCX5CF1FQBtQBo0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

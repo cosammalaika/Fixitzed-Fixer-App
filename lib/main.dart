@@ -14,6 +14,7 @@ import 'package:fixitzed_fixer_app/screens/splash_screen.dart';
 import 'package:fixitzed_fixer_app/screens/subscriptions/subscription_screen.dart';
 import 'package:fixitzed_fixer_app/screens/transactions/wallet_transactions_screen.dart';
 import 'package:fixitzed_fixer_app/services/local_notification_service.dart';
+import 'package:fixitzed_fixer_app/services/fcm_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -24,6 +25,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppTheme.load();
   await LocalNotificationService.instance.init();
+  await FcmService.instance.init();
   runApp(const ProviderScope(child: FixerApp()));
 }
 

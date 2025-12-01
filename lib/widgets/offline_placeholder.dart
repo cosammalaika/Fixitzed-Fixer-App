@@ -34,10 +34,7 @@ class OfflinePlaceholder extends StatelessWidget {
               height: 148,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFFFFC7A0),
-                    Color(0xFFF1592A),
-                  ],
+                  colors: [Color(0xFFFFC7A0), Color(0xFFF1592A)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -87,26 +84,26 @@ class OfflinePlaceholder extends StatelessWidget {
                 color: theme.textTheme.bodyMedium?.color?.withOpacity(0.65),
               ),
             ),
-            if (details != null && details!.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceVariant.withOpacity(0.45),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  details!,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.urbanist(
-                    fontSize: 12,
-                    color:
-                        theme.textTheme.bodySmall?.color?.withOpacity(0.55) ??
-                            Colors.black54,
-                  ),
-                ),
-              ),
-            ],
+            // if (details != null && details!.isNotEmpty) ...[
+            //   const SizedBox(height: 12),
+            //   Container(
+            //     padding: const EdgeInsets.all(12),
+            //     decoration: BoxDecoration(
+            //       color: colorScheme.surfaceVariant.withOpacity(0.45),
+            //       borderRadius: BorderRadius.circular(12),
+            //     ),
+            //     child: Text(
+            //       details!,
+            //       textAlign: TextAlign.center,
+            //       style: GoogleFonts.urbanist(
+            //         fontSize: 12,
+            //         color:
+            //             theme.textTheme.bodySmall?.color?.withOpacity(0.55) ??
+            //                 Colors.black54,
+            //       ),
+            //     ),
+            //   ),
+            // ],
             if (onRetry != null) ...[
               const SizedBox(height: 24),
               ElevatedButton.icon(
@@ -114,8 +111,10 @@ class OfflinePlaceholder extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFF1592A),
                   foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 14,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(24),
                   ),
