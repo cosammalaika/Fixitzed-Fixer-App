@@ -38,6 +38,10 @@ class FixerBookingsController
     extends StateNotifier<AsyncValue<FixerBookingsState>> {
   FixerBookingsController(this._service, this._ref)
     : super(const AsyncValue<FixerBookingsState>.loading()) {
+    final cached = _freshCache();
+    if (cached != null) {
+      state = AsyncValue.data(cached);
+    }
     refresh();
     _registerSync();
   }
@@ -45,6 +49,9 @@ class FixerBookingsController
   final FixerService _service;
   final Ref _ref;
   bool _refreshing = false;
+  static FixerBookingsState? _cache;
+  static DateTime? _cacheFetchedAt;
+  static const Duration _ttl = Duration(minutes: 5);
 
   Future<void> refresh({bool silent = false}) async {
     if (_refreshing) return;
@@ -77,7 +84,17 @@ class FixerBookingsController
       );
     });
     state = result;
+    if (result.hasValue) {
+      _cache = result.value;
+      _cacheFetchedAt = DateTime.now();
+    }
     _refreshing = false;
+  }
+
+  static FixerBookingsState? _freshCache() {
+    if (_cache == null || _cacheFetchedAt == null) return null;
+    if (DateTime.now().difference(_cacheFetchedAt!) > _ttl) return null;
+    return _cache;
   }
 
   void _registerSync() {

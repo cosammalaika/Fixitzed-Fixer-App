@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,6 +7,8 @@ import 'package:flutter/services.dart';
 import 'package:fixitzed_fixer_app/services/auth_service.dart';
 import 'package:fixitzed_fixer_app/services/api_client.dart';
 import 'package:fixitzed_fixer_app/screens/auth/forgot_password_sheet.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fixitzed_fixer_app/state/service_providers.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -104,6 +107,8 @@ class _SignInScreenState extends State<SignInScreen> {
           await prefs.remove('remember_identifier');
           await prefs.remove('remember_email');
         }
+        final container = ProviderScope.containerOf(context, listen: false);
+        unawaited(container.read(preloadServiceProvider).preloadAll());
         Navigator.of(context).pushReplacementNamed('/home');
       } else {
         _showAlert('Sign in failed', 'Invalid email/phone or password');
@@ -548,6 +553,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                         Checkbox(
                                           value: _rememberMe,
                                           activeColor: orange,
+                                          shape: const CircleBorder(),
                                           onChanged: _loading
                                               ? null
                                               : (val) => setState(

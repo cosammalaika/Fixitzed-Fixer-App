@@ -9,8 +9,19 @@ class CatalogService {
   CatalogService({ApiClient? client}) : _api = client ?? ApiClient.I;
 
   final ApiClient _api;
+  List<ServiceCatalogSection>? _cache;
+  DateTime? _fetchedAt;
+  static const Duration _ttl = Duration(minutes: 10);
 
-  Future<List<ServiceCatalogSection>> fetchCatalog() async {
+  Future<List<ServiceCatalogSection>> fetchCatalog({bool forceRefresh = false}) async {
+    final now = DateTime.now();
+    if (!forceRefresh &&
+        _cache != null &&
+        _fetchedAt != null &&
+        now.difference(_fetchedAt!) < _ttl) {
+      return List<ServiceCatalogSection>.from(_cache!);
+    }
+
     final responses = await Future.wait<http.Response>([
       _api.get('/api/categories', query: {'per_page': '200'}),
       _api.get('/api/subcategories', query: {'per_page': '500'}),
@@ -99,7 +110,9 @@ class CatalogService {
 
     sections.sort((a, b) => a.name.compareTo(b.name));
 
-    return sections;
+    _cache = sections;
+    _fetchedAt = now;
+    return List<ServiceCatalogSection>.from(sections);
   }
 
   List<Map<String, dynamic>> _toMapMap(http.Response response) {

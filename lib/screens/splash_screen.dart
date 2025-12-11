@@ -1,14 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:fixitzed_fixer_app/services/api_client.dart';
 import 'package:fixitzed_fixer_app/services/token_storage.dart';
+import 'package:fixitzed_fixer_app/state/service_providers.dart';
 
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends ConsumerWidget {
   const SplashScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!context.mounted) return;
       final prefs = await SharedPreferences.getInstance();
@@ -30,6 +34,10 @@ class SplashScreen extends StatelessWidget {
       final res = await ApiClient.I.get('/api/me');
       if (!context.mounted) return;
       final route = res.statusCode == 200 ? '/home' : '/signin';
+      if (route == '/home') {
+        // Kick off preload but do not block navigation.
+        unawaited(ref.read(preloadServiceProvider).preloadAll());
+      }
       Navigator.of(context).pushReplacementNamed(route);
     });
 

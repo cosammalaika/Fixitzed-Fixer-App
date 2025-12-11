@@ -14,8 +14,19 @@ class FixerDashboardRepository {
   final ApiClient _api;
   final NotificationsService _notifications;
   final FixerService _fixerService;
+  FixerDashboardSnapshot? _cache;
+  DateTime? _fetchedAt;
+  static const Duration _ttl = Duration(minutes: 5);
 
-  Future<FixerDashboardSnapshot> fetchDashboard() async {
+  Future<FixerDashboardSnapshot> fetchDashboard({bool forceRefresh = false}) async {
+    final now = DateTime.now();
+    if (!forceRefresh &&
+        _cache != null &&
+        _fetchedAt != null &&
+        now.difference(_fetchedAt!) < _ttl) {
+      return _cache!;
+    }
+
     final notificationsFuture = _notifications.list();
     final requestsFuture = _fixerService.requests();
     final walletFuture = _fixerService.wallet();
@@ -44,7 +55,7 @@ class FixerDashboardRepository {
 
     final user = _parseUser(meResponse);
 
-    return FixerDashboardSnapshot(
+    _cache = FixerDashboardSnapshot(
       unreadNotifications: unread,
       activeRequests: requests,
       coins: coins,
@@ -55,6 +66,8 @@ class FixerDashboardRepository {
       location: user.location,
       fetchedAt: DateTime.now(),
     );
+    _fetchedAt = now;
+    return _cache!;
   }
 
   _FixerUser _parseUser(http.Response response) {
