@@ -1,30 +1,21 @@
-import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:fixitzed_fixer_app/state/app_sync.dart';
+import 'package:fixitzed_fixer_app/services/token_storage.dart';
 
 class SessionManager {
   SessionManager._();
 
-  static const tokenKey = 'auth_token';
   static final SessionManager instance = SessionManager._();
 
   final AppSync _sync = AppSync.instance;
 
-  Future<void> storeToken(String token) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(tokenKey, token);
-  }
+  Future<void> storeToken(String token) => TokenStorage.instance.saveToken(token);
 
   Future<String?> readToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    final value = prefs.getString(tokenKey);
-    if (value == null || value.isEmpty) return null;
-    return value;
+    return TokenStorage.instance.getToken();
   }
 
   Future<void> removeToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(tokenKey);
+    await TokenStorage.instance.clearToken();
   }
 
   Future<void> finalizeLogout({String reason = 'manual'}) async {
