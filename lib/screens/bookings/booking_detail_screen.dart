@@ -178,6 +178,7 @@ class _FixerBookingSheet extends StatefulWidget {
 class _FixerBookingSheetState extends State<_FixerBookingSheet> {
   bool _processing = false;
   bool _snoozing = false;
+  int? _coins;
 
   Map<String, dynamic> get _data => widget.detail;
 
@@ -218,6 +219,29 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     final raw =
         _data['scheduled_at'] ?? _data['scheduledAt'] ?? _data['schedule'];
     return _parseDate(raw);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWallet();
+  }
+
+  Future<void> _loadWallet() async {
+    try {
+      final wallet = await widget.fixerService.wallet();
+      if (!mounted) return;
+      final coins = ((wallet['coin_balance'] ?? wallet['coins'] ?? 0) as num)
+          .toInt();
+      setState(() => _coins = coins);
+    } catch (_) {
+      // Ignore wallet errors; fall back to allowing accept.
+    }
+  }
+
+  bool get _hasAccess {
+    if (_coins == null) return true;
+    return (_coins ?? 0) > 0;
   }
 
   DateTime? _parseDate(dynamic raw) {
@@ -261,6 +285,14 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
   }
 
   Future<bool> _acceptRequest() async {
+    if (!_hasAccess) {
+      AppSnack.show(
+        context,
+        message: 'You need an active subscription or coins to take this job.',
+        success: false,
+      );
+      return false;
+    }
     await _setProcessing(true);
     final ok = await widget.fixerService.acceptRequest(_requestId);
     await _setProcessing(false);
@@ -869,7 +901,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
 
   Widget _actionSection(String status, Color brand) {
     final lower = status.toLowerCase();
-    final canAccept = lower == 'pending';
+    final canAccept = lower == 'pending' && _hasAccess;
     final canSendBill = lower == 'accepted';
     final canDecline = lower != 'completed';
     final canSnooze = lower == 'pending';
@@ -877,6 +909,40 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (!_hasAccess)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF2EA),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.monetization_on_outlined,
+                    color: Color(0xFFF1592A),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'You need an active subscription or coins to take this job.',
+                    style: GoogleFonts.urbanist(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (!_hasAccess) const SizedBox(height: 12),
         SizedBox(
           height: 56,
           child: SwipeActionButton(
