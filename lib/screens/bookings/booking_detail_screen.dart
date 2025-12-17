@@ -4,6 +4,7 @@ import 'package:fixitzed_fixer_app/services/fixer_service.dart';
 import 'package:fixitzed_fixer_app/ui/snack.dart';
 import 'package:fixitzed_fixer_app/widgets/swipe_action_button.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -294,12 +295,21 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
       return false;
     }
     await _setProcessing(true);
-    final ok = await widget.fixerService.acceptRequest(_requestId);
+    final result = await widget.fixerService.acceptRequestDetailed(_requestId);
     await _setProcessing(false);
-    if (!mounted) return ok;
+    if (!mounted) return result['success'] == true;
+    final ok = result['success'] == true;
+    final statusCode = result['statusCode'] as int?;
+    final msg = (result['message'] as String?)?.trim();
     AppSnack.show(
       context,
-      message: ok ? 'Request accepted' : 'Failed to accept request',
+      message: ok
+          ? (msg != null && msg.isNotEmpty ? msg : 'Request accepted')
+          : (statusCode == 409 || statusCode == 410
+                ? 'This request is no longer available.'
+                : (msg != null && msg.isNotEmpty
+                      ? msg
+                      : 'Failed to accept request')),
       success: ok,
     );
     if (ok) {
@@ -314,17 +324,27 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
   }
 
   Future<void> _cancelRequest() async {
+    if (kDebugMode) {
+      debugPrint(
+        'Decline request id=$_requestId status=${_status()} detail=${_data['id']}',
+      );
+    }
     await _setProcessing(true);
     final result = await widget.fixerService.declineRequest(_requestId);
     await _setProcessing(false);
     if (!mounted) return;
     final ok = result['success'] == true;
     final msg = (result['message'] as String?)?.trim();
+    final statusCode = result['statusCode'] as int?;
     AppSnack.show(
       context,
       message: ok
           ? (msg != null && msg.isNotEmpty ? msg : 'Request declined')
-          : (msg != null && msg.isNotEmpty ? msg : 'Failed to decline request'),
+          : (statusCode == 409 || statusCode == 410
+                ? 'This request is no longer available.'
+                : (msg != null && msg.isNotEmpty
+                      ? msg
+                      : 'Failed to decline request')),
       success: ok,
     );
     if (ok) {
@@ -903,12 +923,48 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     final lower = status.toLowerCase();
     final canAccept = lower == 'pending' && _hasAccess;
     final canSendBill = lower == 'accepted';
-    final canDecline = lower != 'completed';
+    final canDecline = lower == 'pending';
     final canSnooze = lower == 'pending';
+    final isUnavailable =
+        lower == 'expired' || lower == 'cancelled' || lower == 'declined';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (isUnavailable)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF2EA),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.info_outline_rounded,
+                    color: Color(0xFFF1592A),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'This request is no longer available.',
+                    style: GoogleFonts.urbanist(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (isUnavailable) const SizedBox(height: 12),
         if (!_hasAccess)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

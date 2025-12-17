@@ -130,13 +130,27 @@ class FixerService {
 
   // Accept a service request for this fixer according to provided routes
   Future<bool> acceptRequest(int id) async {
+    final result = await acceptRequestDetailed(id);
+    return result['success'] == true;
+  }
+
+  Future<Map<String, dynamic>> acceptRequestDetailed(int id) async {
     final res = await _api.post('/api/service-requests/$id/accept', body: {});
+    final body = _decodeBody(res);
+    if (kDebugMode) {
+      debugPrint('acceptRequest id=$id status=${res.statusCode} body=$body');
+    }
     final ok = res.statusCode == 200 || res.statusCode == 201;
     if (ok) {
       unawaited(profile());
       _emitRequests(action: 'accept', requestId: id, status: 'accepted');
     }
-    return ok;
+    return {
+      'success': ok,
+      'statusCode': res.statusCode,
+      'message': body['message']?.toString(),
+      'data': body['data'],
+    };
   }
 
   // Update a request status (e.g., completed, cancelled)
@@ -152,6 +166,9 @@ class FixerService {
   Future<Map<String, dynamic>> declineRequest(int id) async {
     final res = await _api.post('/api/fixer/requests/$id/decline', body: {});
     final body = _decodeBody(res);
+    if (kDebugMode) {
+      debugPrint('declineRequest id=$id status=${res.statusCode} body=$body');
+    }
     final successFlag =
         res.statusCode >= 200 &&
         res.statusCode < 300 &&
@@ -167,6 +184,7 @@ class FixerService {
     }
     return {
       'success': successFlag,
+      'statusCode': res.statusCode,
       'message': body['message']?.toString(),
       'data': body['data'],
     };

@@ -120,7 +120,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         phone: phone,
         coins: _coins,
         canAccept: _coins > 0,
-        onAccept: () => _fixer.acceptRequest(r.id),
+        onAccept: () => _fixer.acceptRequestDetailed(r.id),
+        onDecline: () => _fixer.declineRequest(r.id),
       ),
     );
 
@@ -867,7 +868,8 @@ class _NewRequestSheet extends StatefulWidget {
   final String? phone;
   final int coins;
   final bool canAccept;
-  final Future<bool> Function() onAccept;
+  final Future<Map<String, dynamic>> Function() onAccept;
+  final Future<Map<String, dynamic>> Function() onDecline;
 
   const _NewRequestSheet({
     required this.request,
@@ -876,6 +878,7 @@ class _NewRequestSheet extends StatefulWidget {
     required this.coins,
     required this.canAccept,
     required this.onAccept,
+    required this.onDecline,
   });
 
   @override
@@ -1124,9 +1127,41 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
                       child: OutlinedButton(
                         onPressed: _processing
                             ? null
-                            : () => Navigator.of(
-                                context,
-                              ).pop(_RequestSheetResult.declined),
+                            : () async {
+                                setState(() => _processing = true);
+                                final result = await widget.onDecline();
+                                if (!mounted) return;
+                                final ok = result['success'] == true;
+                                final statusCode = result['statusCode'] as int?;
+                                final msg = (result['message'] as String?)?.trim();
+                                if (!ok && statusCode != 409 && statusCode != 410) {
+                                  setState(() => _processing = false);
+                                  AppSnack.show(
+                                    context,
+                                    message: msg != null && msg.isNotEmpty
+                                        ? msg
+                                        : 'Failed to decline request. Try again.',
+                                    success: false,
+                                  );
+                                  return;
+                                }
+                                if (!ok) {
+                                  AppSnack.show(
+                                    context,
+                                    message: 'This request is no longer available.',
+                                    success: false,
+                                  );
+                                } else {
+                                  AppSnack.show(
+                                    context,
+                                    message: msg != null && msg.isNotEmpty
+                                        ? msg
+                                        : 'Request declined',
+                                    success: true,
+                                  );
+                                }
+                                Navigator.of(context).pop(_RequestSheetResult.declined);
+                              },
                         style: OutlinedButton.styleFrom(
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
@@ -1148,15 +1183,25 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
                             ? null
                             : () async {
                                 setState(() => _processing = true);
-                                final ok = await widget.onAccept();
+                                final result = await widget.onAccept();
                                 if (!mounted) return;
+                                final ok = result['success'] == true;
+                                final statusCode = result['statusCode'] as int?;
+                                final msg = (result['message'] as String?)?.trim();
                                 if (!ok) {
                                   setState(() => _processing = false);
                                   AppSnack.show(
                                     context,
-                                    message: 'Failed to accept request. Try again.',
+                                    message: statusCode == 409 || statusCode == 410
+                                        ? 'This request is no longer available.'
+                                        : (msg != null && msg.isNotEmpty
+                                              ? msg
+                                              : 'Failed to accept request. Try again.'),
                                     success: false,
                                   );
+                                  if (statusCode == 409 || statusCode == 410) {
+                                    Navigator.of(context).pop(_RequestSheetResult.declined);
+                                  }
                                 } else {
                                   Navigator.of(
                                     context,
