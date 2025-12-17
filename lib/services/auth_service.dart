@@ -4,6 +4,7 @@ import 'package:fixitzed_fixer_app/models/fixer.dart';
 import 'package:fixitzed_fixer_app/services/api_client.dart';
 import 'package:fixitzed_fixer_app/services/session_guard.dart';
 import 'package:fixitzed_fixer_app/services/session_manager.dart';
+import 'package:fixitzed_fixer_app/services/fcm_service.dart';
 
 class LoginResult {
   final bool success;
@@ -39,6 +40,7 @@ class AuthService {
     }
 
     await _api.setToken(token);
+    await FcmService.instance.registerTokenForCurrentUser();
 
     bool inactive = _extractInactiveFlag(data['user']);
 
@@ -124,6 +126,7 @@ class AuthService {
     try {
       await _api.post('/api/logout', body: {});
     } finally {
+      await FcmService.instance.unregisterTokenForCurrentUser();
       await _api.setToken(null);
       await SessionManager.instance.finalizeLogout(reason: 'manual');
     }
