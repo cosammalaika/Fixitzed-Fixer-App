@@ -55,7 +55,18 @@ class FcmService {
       log('FCM permission: ${settings.authorizationStatus}');
     }
 
-    final token = await FirebaseMessaging.instance.getToken();
+    // On iOS, ensure APNs token is available before requesting an FCM token.
+    if (Platform.isIOS) {
+      final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+      if (apnsToken == null || apnsToken.isEmpty) {
+        if (kDebugMode) {
+          log('APNs token missing; skipping FCM token registration for now.');
+        }
+        return;
+      }
+    }
+
+    final token = await _getMessagingToken();
     if (token != null) {
       await _persistToken(token);
     }
@@ -75,6 +86,15 @@ class FcmService {
     });
 
     _initialized = true;
+  }
+
+  Future<String?> _getMessagingToken() async {
+    try {
+      return await FirebaseMessaging.instance.getToken();
+    } catch (e) {
+      if (kDebugMode) log('FCM getToken failed: $e');
+      return null;
+    }
   }
 
   Future<void> _persistToken(String token) async {
