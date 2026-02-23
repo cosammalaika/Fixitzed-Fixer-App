@@ -233,44 +233,12 @@ class _BookingsListScreenState extends State<BookingsListScreen>
         final r = items[i];
         return Container(
           margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          child: Material(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(16),
-            child: InkWell(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _openBookingDetails(context, ref, r),
+            child: Material(
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(16),
-              onTap: () async {
-                assert(r.id > 0, 'Accepted booking request id is missing');
-                final payload = r.toJson();
-                if (kDebugMode) {
-                  debugPrint(
-                    '[BookingsList] tap booking id=${r.id} request_id=${payload['request_id'] ?? payload['id']} status=${r.status} keys=${payload.keys.toList()}',
-                  );
-                }
-                bool? result;
-                try {
-                  result = await Navigator.pushNamed<bool>(
-                    context,
-                    '/booking_detail',
-                    arguments: {
-                      'id': r.id,
-                      'request': payload,
-                    },
-                  );
-                } catch (e, st) {
-                  if (kDebugMode) {
-                    debugPrint('[BookingsList] navigation error: $e');
-                    debugPrint(st.toString());
-                  }
-                  rethrow;
-                }
-                if (!mounted) return;
-                if (result == true) {
-                  await ref
-                      .read(fixerBookingsProvider.notifier)
-                      .refresh(silent: true);
-                  ref.invalidate(fixerProfileProvider);
-                }
-              },
               child: Ink(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
@@ -356,6 +324,32 @@ class _BookingsListScreenState extends State<BookingsListScreen>
         );
       },
     );
+  }
+
+  Future<void> _openBookingDetails(
+    BuildContext context,
+    WidgetRef ref,
+    ServiceRequest booking,
+  ) async {
+    final id = booking.id;
+    assert(id > 0, 'Booking id is null/invalid - fix JSON mapping');
+    if (kDebugMode) {
+      debugPrint('Accepted booking tapped: bookingId=$id');
+    }
+
+    final result = await Navigator.of(context).pushNamed(
+      '/booking_detail',
+      arguments: {
+        'id': id,
+        'request': booking.toJson(),
+      },
+    );
+
+    if (!mounted) return;
+    if (result == true) {
+      await ref.read(fixerBookingsProvider.notifier).refresh(silent: true);
+      ref.invalidate(fixerProfileProvider);
+    }
   }
 
   Widget _statusChip(String status) {
