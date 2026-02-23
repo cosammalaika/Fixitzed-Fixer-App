@@ -213,6 +213,11 @@ class FixerService {
     for (final path in targets) {
       try {
         final res = await _api.get(path);
+        if (kDebugMode) {
+          debugPrint(
+            '[FixerService.requestDetail] GET $path status=${res.statusCode} bytes=${res.body.length}',
+          );
+        }
         if (res.statusCode == 200) {
           final root = jsonDecode(res.body);
           final unwrapped = _unwrapRequest(root);
@@ -232,6 +237,11 @@ class FixerService {
     ]) {
       try {
         final res = await _api.get(path);
+        if (kDebugMode) {
+          debugPrint(
+            '[FixerService.requestDetail] fallback GET $path status=${res.statusCode} bytes=${res.body.length}',
+          );
+        }
         if (res.statusCode != 200) continue;
         final root = jsonDecode(res.body);
         final list = _unwrapRequestList(root);

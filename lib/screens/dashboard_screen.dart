@@ -5,6 +5,7 @@ import 'package:fixitzed_fixer_app/state/bookings_controller.dart';
 import 'package:fixitzed_fixer_app/state/dashboard_controller.dart';
 import 'package:fixitzed_fixer_app/ui/snack.dart';
 import 'package:fixitzed_fixer_app/widgets/offline_placeholder.dart';
+import 'package:fixitzed_fixer_app/common/connectivity/connectivity_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,25 +26,56 @@ class DashboardScreen extends ConsumerStatefulWidget {
 
 enum _RequestSheetResult { accepted, declined, purchase }
 
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
+    with WidgetsBindingObserver {
   final _fixer = FixerService();
+  DateTime? _lastRefreshTriggerAt;
+  bool? _lastOnline;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _startPolling();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _triggerRefreshIfDue(reason: 'resume');
+    }
   }
 
   Future<void> _refreshDashboard() async {
     await Future.wait([
-      ref.read(fixerDashboardControllerProvider.notifier).refresh(),
+      ref.read(fixerDashboardControllerProvider.notifier).refresh(
+        forceRefresh: true,
+      ),
       ref.read(fixerBookingsProvider.notifier).refresh(),
     ]);
+  }
+
+  void _triggerRefreshIfDue({
+    required String reason,
+    Duration minInterval = const Duration(seconds: 5),
+  }) {
+    final now = DateTime.now();
+    final last = _lastRefreshTriggerAt;
+    if (last != null && now.difference(last) < minInterval) {
+      return;
+    }
+    _lastRefreshTriggerAt = now;
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _refreshDashboard();
+    });
   }
 
   // Polling for new requests and prompt fixer
@@ -154,6 +186,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final connectivity = ref.watch(connectivityProvider);
+    final isOnline = connectivity.isOnline;
+    if (_lastOnline == null) {
+      _lastOnline = isOnline;
+    } else if (_lastOnline == false && isOnline) {
+      _lastOnline = isOnline;
+      _triggerRefreshIfDue(reason: 'connectivity_regained');
+    } else {
+      _lastOnline = isOnline;
+    }
+
     final dashboardAsync = ref.watch(fixerDashboardControllerProvider);
     final bookingsAsync = ref.watch(fixerBookingsProvider);
     final snapshot = dashboardAsync.valueOrNull;
@@ -195,6 +238,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             children: [
               _HeaderCard(
                 snapshot: snapshot,
+                isSyncing: isRefreshing,
+                isOffline: !isOnline,
                 onNotificationsTap: () async {
                   await Navigator.pushNamed(context, '/notifications');
                   if (mounted) _refreshDashboard();
@@ -264,13 +309,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                       ),
                     ),
-              if (isRefreshing)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Center(
-                    child: CircularProgressIndicator(strokeWidth: 2.4),
-                  ),
-                ),
             ],
           ),
         ),
@@ -302,7 +340,10 @@ class _StatRow extends StatelessWidget {
           children: [
             Icon(icon, color: Color(0xFFF1592A)),
             const SizedBox(height: 6),
-            Text('$value', style: const TextStyle(fontWeight: FontWeight.w800)),
+            _AnimatedValueText(
+              text: '$value',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 2),
             Text(label, style: const TextStyle(fontSize: 12)),
           ],
@@ -357,13 +398,21 @@ class _ErrorBanner extends StatelessWidget {
 
 class _HeaderCard extends StatelessWidget {
   final FixerDashboardSnapshot snapshot;
+  final bool isSyncing;
+  final bool isOffline;
   final VoidCallback onNotificationsTap;
-  const _HeaderCard({required this.snapshot, required this.onNotificationsTap});
+  const _HeaderCard({
+    required this.snapshot,
+    required this.isSyncing,
+    required this.isOffline,
+    required this.onNotificationsTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     const brand = Color(0xFFF1592A);
     final currency = NumberFormat.currency(symbol: 'K', decimalDigits: 2);
+    final lastUpdatedAt = snapshot.serverUpdatedAt ?? snapshot.fetchedAt;
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -409,6 +458,13 @@ class _HeaderCard extends StatelessWidget {
                           ? 'Ready to serve today?'
                           : snapshot.location,
                       style: GoogleFonts.urbanist(color: Colors.white70),
+                    ),
+                    const SizedBox(height: 6),
+                    _SyncBadge(
+                      isSyncing: isSyncing,
+                      isOffline: isOffline,
+                      fromCache: snapshot.fromCache,
+                      lastUpdatedAt: lastUpdatedAt,
                     ),
                   ],
                 ),
@@ -488,8 +544,8 @@ class _HeaderCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                Text(
-                  '${snapshot.coins}',
+                _AnimatedValueText(
+                  text: '${snapshot.coins}',
                   style: GoogleFonts.urbanist(
                     color: brand,
                     fontWeight: FontWeight.w800,
@@ -567,8 +623,8 @@ class _HeaderCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    Text(
-                      currency.format(snapshot.totalEarnings),
+                    _AnimatedValueText(
+                      text: currency.format(snapshot.totalEarnings),
                       style: GoogleFonts.urbanist(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
@@ -581,6 +637,102 @@ class _HeaderCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SyncBadge extends StatelessWidget {
+  const _SyncBadge({
+    required this.isSyncing,
+    required this.isOffline,
+    required this.fromCache,
+    required this.lastUpdatedAt,
+  });
+
+  final bool isSyncing;
+  final bool isOffline;
+  final bool fromCache;
+  final DateTime lastUpdatedAt;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = isOffline
+        ? 'Offline • showing saved data'
+        : isSyncing
+            ? 'Syncing...'
+            : 'Updated ${_relative(lastUpdatedAt)}';
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: isOffline
+                ? Colors.white60
+                : isSyncing
+                    ? const Color(0xFFFFE6B3)
+                    : const Color(0xFFC3FFD8),
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 6),
+        Flexible(
+          child: Text(
+            fromCache && !isOffline && !isSyncing ? '$label • cache' : label,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.urbanist(
+              color: Colors.white.withOpacity(0.88),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _relative(DateTime value) {
+    final delta = DateTime.now().difference(value);
+    if (delta.inSeconds < 10) return 'just now';
+    if (delta.inMinutes < 1) return '${delta.inSeconds}s ago';
+    if (delta.inHours < 1) return '${delta.inMinutes}m ago';
+    return '${delta.inHours}h ago';
+  }
+}
+
+class _AnimatedValueText extends StatelessWidget {
+  const _AnimatedValueText({
+    required this.text,
+    required this.style,
+  });
+
+  final String text;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      transitionBuilder: (child, animation) {
+        final offset = Tween<Offset>(
+          begin: const Offset(0, 0.12),
+          end: Offset.zero,
+        ).animate(animation);
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(position: offset, child: child),
+        );
+      },
+      child: Text(
+        text,
+        key: ValueKey(text),
+        style: style,
       ),
     );
   }

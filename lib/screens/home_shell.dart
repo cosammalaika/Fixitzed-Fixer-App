@@ -4,6 +4,7 @@ import 'package:fixitzed_fixer_app/screens/bookings/bookings_list_screen.dart';
 import 'package:fixitzed_fixer_app/screens/dashboard_screen.dart';
 import 'package:fixitzed_fixer_app/screens/subscriptions/subscription_screen.dart';
 import 'package:fixitzed_fixer_app/screens/profile/profile_screen.dart';
+import 'package:fixitzed_fixer_app/state/app_sync.dart';
 import 'package:fixitzed_fixer_app/widgets/bottom_nav.dart';
 
 class HomeShell extends StatefulWidget {
@@ -34,7 +35,15 @@ class _HomeShellState extends State<HomeShell> {
         body: IndexedStack(index: _index, children: _pages),
         bottomNavigationBar: FixerBottomNav(
           currentIndex: _index,
-          onTap: (i) => setState(() => _index = i),
+          onTap: (i) {
+            if (i == 0) {
+              AppSync.instance.emit(
+                AppSyncTopic.dashboard,
+                payload: const {'source': 'tab_enter'},
+              );
+            }
+            setState(() => _index = i);
+          },
         ),
       ),
     );

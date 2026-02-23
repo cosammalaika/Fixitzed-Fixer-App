@@ -36,6 +36,11 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       ModalRoute.of(context)?.settings.arguments,
     );
     _id = payload.id;
+    if (kDebugMode) {
+      debugPrint(
+        '[BookingDetail] init id=$_id hasPrefill=${payload.detail != null}',
+      );
+    }
     if (payload.detail != null) {
       _detail = payload.detail;
       _loading = false;

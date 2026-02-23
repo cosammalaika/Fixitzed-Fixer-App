@@ -8,6 +8,7 @@ import 'package:fixitzed_fixer_app/services/auth_service.dart';
 import 'package:fixitzed_fixer_app/services/api_client.dart';
 import 'package:fixitzed_fixer_app/screens/auth/forgot_password_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:fixitzed_fixer_app/state/app_sync.dart';
 import 'package:fixitzed_fixer_app/state/service_providers.dart';
 
 class SignInScreen extends StatefulWidget {
@@ -109,6 +110,22 @@ class _SignInScreenState extends State<SignInScreen> {
         }
         final container = ProviderScope.containerOf(context, listen: false);
         unawaited(container.read(preloadServiceProvider).preloadAll());
+        AppSync.instance.emit(
+          AppSyncTopic.dashboard,
+          payload: const {'source': 'login_success'},
+        );
+        AppSync.instance.emit(
+          AppSyncTopic.requests,
+          payload: const {'source': 'login_success'},
+        );
+        AppSync.instance.emit(
+          AppSyncTopic.notifications,
+          payload: const {'source': 'login_success'},
+        );
+        AppSync.instance.emit(
+          AppSyncTopic.wallet,
+          payload: const {'source': 'login_success'},
+        );
         Navigator.of(context).pushReplacementNamed('/home');
       } else {
         _showAlert('Sign in failed', 'Invalid email/phone or password');

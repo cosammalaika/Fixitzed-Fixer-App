@@ -10,9 +10,9 @@ class FixerDashboardController
     extends StateNotifier<AsyncValue<FixerDashboardSnapshot>> {
   FixerDashboardController(this._repository, this._ref)
       : super(const AsyncValue<FixerDashboardSnapshot>.loading()) {
-    refresh();
+    unawaited(load());
     _timer = Timer.periodic(const Duration(seconds: 45), (_) {
-      refresh(silent: true);
+      unawaited(refresh(silent: true, forceRefresh: true));
     });
     _registerSync();
   }
@@ -21,19 +21,39 @@ class FixerDashboardController
   final Ref _ref;
   Timer? _timer;
   bool _syncRegistered = false;
+  bool _refreshing = false;
 
-  Future<void> refresh({bool silent = false}) async {
-    if (!silent) {
+  Future<void> load({bool forceRefresh = false}) async {
+    final cached = await _repository.readCachedDashboard();
+    if (cached != null) {
+      state = AsyncValue.data(cached);
+    }
+    await refresh(
+      silent: cached != null,
+      forceRefresh: true,
+    );
+  }
+
+  Future<void> refresh({
+    bool silent = false,
+    bool forceRefresh = false,
+  }) async {
+    if (_refreshing) return;
+    _refreshing = true;
+
+    if (state.hasValue) {
       state = const AsyncValue<FixerDashboardSnapshot>.loading()
           .copyWithPrevious(state);
+    } else if (!silent) {
+      state = const AsyncValue<FixerDashboardSnapshot>.loading();
     }
 
-    // Make sure fetchDashboard returns Future<FixerDashboardSnapshot>
     final result = await AsyncValue.guard<FixerDashboardSnapshot>(
-      () => _repository.fetchDashboard(),
+      () => _repository.fetchDashboard(forceRefresh: forceRefresh),
     );
 
     state = result;
+    _refreshing = false;
   }
 
   @override
@@ -48,14 +68,14 @@ class FixerDashboardController
 
     void queueRefresh({bool silent = true}) {
       if (silent) {
-        unawaited(refresh(silent: true));
+        unawaited(refresh(silent: true, forceRefresh: true));
       } else {
-        unawaited(refresh());
+        unawaited(refresh(forceRefresh: true));
       }
     }
 
     _ref.onAppSync(AppSyncTopic.dashboard, (_) {
-      queueRefresh(silent: false);
+      queueRefresh(silent: true);
     });
     _ref.onAppSync(AppSyncTopic.notifications, (_) {
       queueRefresh();

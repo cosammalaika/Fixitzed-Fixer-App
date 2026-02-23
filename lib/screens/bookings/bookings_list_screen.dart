@@ -233,100 +233,113 @@ class _BookingsListScreenState extends State<BookingsListScreen>
         final r = items[i];
         return Container(
           margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
+          child: Material(
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ],
-            border: Border.all(color: const Color(0x1AF1592A)),
-          ),
-          child: InkWell(
-            onTap: () async {
-              final result = await Navigator.pushNamed<bool>(
-                context,
-                '/booking_detail',
-                arguments: {
-                  'id': r.id,
-                  'request': r.toJson(),
-                },
-              );
-              if (!mounted) return;
-              if (result == true) {
-                await ref
-                    .read(fixerBookingsProvider.notifier)
-                    .refresh(silent: true);
-                ref.invalidate(fixerProfileProvider);
-              }
-            },
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(
-                    color: Color(0x1AF1592A),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.handyman_rounded,
-                    color: Color(0xFFF1592A),
-                  ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () async {
+                if (kDebugMode) {
+                  debugPrint(
+                    '[BookingsList] open booking_detail id=${r.id} status=${r.status}',
+                  );
+                }
+                final result = await Navigator.pushNamed<bool>(
+                  context,
+                  '/booking_detail',
+                  arguments: {
+                    'id': r.id,
+                    'request': r.toJson(),
+                  },
+                );
+                if (!mounted) return;
+                if (result == true) {
+                  await ref
+                      .read(fixerBookingsProvider.notifier)
+                      .refresh(silent: true);
+                  ref.invalidate(fixerProfileProvider);
+                }
+              },
+              child: Ink(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                  border: Border.all(color: const Color(0x1AF1592A)),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              r.service.name,
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: const BoxDecoration(
+                          color: Color(0x1AF1592A),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.handyman_rounded,
+                          color: Color(0xFFF1592A),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    r.service.name,
+                                    style: GoogleFonts.urbanist(
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                _statusChip(r.status),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${r.customer.name}${r.location != null ? ' • ${r.location}' : ''}',
                               style: GoogleFonts.urbanist(
-                                fontWeight: FontWeight.w700,
+                                color: Theme.of(context).hintColor,
                               ),
                             ),
-                          ),
-                          _statusChip(r.status),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${r.customer.name}${r.location != null ? ' • ${r.location}' : ''}',
-                        style: GoogleFonts.urbanist(
-                          color: Theme.of(context).hintColor,
+                            if (r.declinedAt != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  'Declined: ${DateFormat('d MMM • HH:mm').format(r.declinedAt!.toLocal())}',
+                                  style: GoogleFonts.urbanist(
+                                    color: Theme.of(context).hintColor,
+                                  ),
+                                ),
+                              )
+                            else if (r.scheduledAt != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  'Scheduled: ${DateFormat('d MMM • HH:mm').format(r.scheduledAt!.toLocal())}',
+                                  style: GoogleFonts.urbanist(
+                                    color: Theme.of(context).hintColor,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
-                      if (r.declinedAt != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            'Declined: ${DateFormat('d MMM • HH:mm').format(r.declinedAt!.toLocal())}',
-                            style: GoogleFonts.urbanist(
-                              color: Theme.of(context).hintColor,
-                            ),
-                          ),
-                        )
-                      else if (r.scheduledAt != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Text(
-                            'Scheduled: ${DateFormat('d MMM • HH:mm').format(r.scheduledAt!.toLocal())}',
-                            style: GoogleFonts.urbanist(
-                              color: Theme.of(context).hintColor,
-                            ),
-                          ),
-                        ),
+                      const Icon(Icons.chevron_right),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right),
-              ],
+              ),
             ),
           ),
         );

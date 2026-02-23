@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:fixitzed_fixer_app/services/local_notification_service.dart';
 import 'package:fixitzed_fixer_app/services/api_client.dart';
+import 'package:fixitzed_fixer_app/state/app_sync.dart';
 import 'package:http/http.dart' as http;
 
 Future<void> fcmBackgroundHandler(RemoteMessage message) async {
@@ -76,6 +77,7 @@ class FcmService {
       final notification = message.notification;
       final title = notification?.title ?? message.data['title'];
       final body = notification?.body ?? message.data['body'];
+      _emitRealtimeSyncHints(message);
       if (title != null || body != null) {
         LocalNotificationService.instance.showInstant(
           title: title ?? 'New notification',
@@ -86,6 +88,57 @@ class FcmService {
     });
 
     _initialized = true;
+  }
+
+  void _emitRealtimeSyncHints(RemoteMessage message) {
+    final sync = AppSync.instance;
+    final data = message.data;
+    final rawTopics = (data['sync_topics'] ?? data['topics'] ?? '')
+        .toString()
+        .trim();
+
+    final topics = <String>{};
+    if (rawTopics.isNotEmpty) {
+      for (final topic in rawTopics.split(',')) {
+        final normalized = topic.trim().toLowerCase();
+        switch (normalized) {
+          case 'dashboard':
+            topics.add(AppSyncTopic.dashboard);
+            break;
+          case 'requests':
+          case 'bookings':
+            topics.add(AppSyncTopic.requests);
+            topics.add(AppSyncTopic.dashboard);
+            break;
+          case 'wallet':
+          case 'coins':
+          case 'subscription':
+            topics.add(AppSyncTopic.wallet);
+            topics.add(AppSyncTopic.dashboard);
+            break;
+          case 'notifications':
+          case 'notification':
+            topics.add(AppSyncTopic.notifications);
+            topics.add(AppSyncTopic.dashboard);
+            break;
+          case 'profile':
+            topics.add(AppSyncTopic.profile);
+            break;
+        }
+      }
+    }
+
+    // Fallback: any foreground push should at least refresh dashboard+notifications.
+    if (topics.isEmpty) {
+      topics.addAll([AppSyncTopic.dashboard, AppSyncTopic.notifications]);
+    }
+
+    for (final topic in topics) {
+      sync.emit(topic, payload: {
+        'source': 'fcm',
+        'message_id': message.messageId,
+      });
+    }
   }
 
   Future<String?> _getMessagingToken() async {

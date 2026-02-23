@@ -19,7 +19,17 @@ class Fixer {
 
   factory Fixer.fromJson(Map<String, dynamic> j) => Fixer(
     id: _parseId(j['id']) ?? 0,
-    user: User.fromJson(_asMap(j['user'])),
+    user: User.fromJson(
+      _asMap(j['user']).isNotEmpty
+          ? _asMap(j['user'])
+          : {
+              'id': _parseId(j['user_id']) ?? 0,
+              'first_name': j['first_name'],
+              'last_name': j['last_name'],
+              'email': (j['email'] ?? '').toString(),
+              'profile_photo_url': j['profile_photo_url'],
+            },
+    ),
     bio: j['bio'] as String?,
     availability: (j['availability'] ?? 'available').toString(),
     ratingAvg: j['rating_avg'] == null
@@ -67,10 +77,10 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> j) => User(
-    id: j['id'] as int,
+    id: _parseId(j['id']) ?? 0,
     firstName: j['first_name'] as String?,
     lastName: j['last_name'] as String?,
-    email: j['email'] as String,
+    email: (j['email'] ?? '').toString(),
     profilePhotoUrl: j['profile_photo_url'] as String?,
   );
 

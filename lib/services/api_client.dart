@@ -22,10 +22,17 @@ class ApiClient {
     }
   }
 
-  Future<http.Response> get(String path, {Map<String, String>? query}) async {
+  Future<http.Response> get(
+    String path, {
+    Map<String, String>? query,
+    Map<String, String>? headers,
+  }) async {
     final uri = Uri.parse('$baseUrl$path').replace(queryParameters: query);
-    final headers = await _headers();
-    final response = await http.get(uri, headers: headers);
+    final requestHeaders = await _headers();
+    if (headers != null && headers.isNotEmpty) {
+      requestHeaders.addAll(headers);
+    }
+    final response = await http.get(uri, headers: requestHeaders);
     await SessionGuard.evaluate(response);
     return response;
   }
