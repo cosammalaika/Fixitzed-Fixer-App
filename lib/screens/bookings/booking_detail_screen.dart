@@ -32,9 +32,17 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     super.didChangeDependencies();
     if (_initialized) return;
     _initialized = true;
-    final payload = _parsePayload(
-      ModalRoute.of(context)?.settings.arguments,
-    );
+    final rawArgs = ModalRoute.of(context)?.settings.arguments;
+    if (kDebugMode) {
+      if (rawArgs is Map) {
+        debugPrint(
+          '[BookingDetail] route args type=Map keys=${rawArgs.keys.map((e) => e.toString()).toList()}',
+        );
+      } else {
+        debugPrint('[BookingDetail] route args type=${rawArgs.runtimeType} value=$rawArgs');
+      }
+    }
+    final payload = _parsePayload(rawArgs);
     _id = payload.id;
     if (kDebugMode) {
       debugPrint(
@@ -78,6 +86,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     });
     final detail = await _fetchDetail(id);
     if (!mounted) return;
+    final hadPrefill = _detail != null;
     if (detail == null) {
       AppSnack.show(
         context,
@@ -86,7 +95,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       );
       setState(() {
         _loading = false;
-        _detail = null;
+        if (!hadPrefill) {
+          _detail = null;
+        }
       });
       return;
     }

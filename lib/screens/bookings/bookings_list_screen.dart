@@ -239,19 +239,30 @@ class _BookingsListScreenState extends State<BookingsListScreen>
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
               onTap: () async {
+                assert(r.id > 0, 'Accepted booking request id is missing');
+                final payload = r.toJson();
                 if (kDebugMode) {
                   debugPrint(
-                    '[BookingsList] open booking_detail id=${r.id} status=${r.status}',
+                    '[BookingsList] tap booking id=${r.id} request_id=${payload['request_id'] ?? payload['id']} status=${r.status} keys=${payload.keys.toList()}',
                   );
                 }
-                final result = await Navigator.pushNamed<bool>(
-                  context,
-                  '/booking_detail',
-                  arguments: {
-                    'id': r.id,
-                    'request': r.toJson(),
-                  },
-                );
+                bool? result;
+                try {
+                  result = await Navigator.pushNamed<bool>(
+                    context,
+                    '/booking_detail',
+                    arguments: {
+                      'id': r.id,
+                      'request': payload,
+                    },
+                  );
+                } catch (e, st) {
+                  if (kDebugMode) {
+                    debugPrint('[BookingsList] navigation error: $e');
+                    debugPrint(st.toString());
+                  }
+                  rethrow;
+                }
                 if (!mounted) return;
                 if (result == true) {
                   await ref

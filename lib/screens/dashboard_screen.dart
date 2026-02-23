@@ -301,11 +301,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         padding: const EdgeInsets.only(bottom: 12),
                         child: _RequestCard(
                           request: r,
-                          onTap: () => Navigator.pushNamed(
-                            context,
-                            '/booking_detail',
-                            arguments: r.id,
-                          ),
+                          onTap: () {
+                            assert(r.id > 0, 'Dashboard booking request id is missing');
+                            final payload = r.toJson();
+                            if (kDebugMode) {
+                              debugPrint(
+                                '[Dashboard] tap recent booking id=${r.id} request_id=${payload['request_id'] ?? payload['id']} status=${r.status} keys=${payload.keys.toList()}',
+                              );
+                            }
+                            Navigator.pushNamed(
+                              context,
+                              '/booking_detail',
+                              arguments: {
+                                'id': r.id,
+                                'request': payload,
+                              },
+                            );
+                          },
                         ),
                       ),
                     ),

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:fixitzed_fixer_app/config.dart';
 import 'package:fixitzed_fixer_app/services/session_guard.dart';
@@ -32,7 +33,19 @@ class ApiClient {
     if (headers != null && headers.isNotEmpty) {
       requestHeaders.addAll(headers);
     }
+    if (kDebugMode) {
+      debugPrint(
+        '[ApiClient][GET] url=$uri auth=${requestHeaders.containsKey('Authorization')} headers=${requestHeaders.keys.toList()}',
+      );
+    }
     final response = await http.get(uri, headers: requestHeaders);
+    if (kDebugMode) {
+      final body = response.body;
+      final snippet = body.length > 300 ? '${body.substring(0, 300)}…' : body;
+      debugPrint(
+        '[ApiClient][GET] status=${response.statusCode} url=$uri body=$snippet',
+      );
+    }
     await SessionGuard.evaluate(response);
     return response;
   }
