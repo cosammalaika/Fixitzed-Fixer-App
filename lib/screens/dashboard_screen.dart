@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:fixitzed_fixer_app/core/utils/dialer.dart';
 import 'package:fixitzed_fixer_app/widgets/skeletons.dart';
 import 'package:fixitzed_fixer_app/widgets/swipe_action_button.dart';
 
@@ -1519,8 +1519,8 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
   }
 
   Future<void> _call(String number) async {
-    final uri = Uri(scheme: 'tel', path: number);
-    if (!await launchUrl(uri)) {
+    final ok = await callNumber(number);
+    if (!ok) {
       if (!mounted) return;
       AppSnack.show(context, message: 'Unable to start call', success: false);
     }
