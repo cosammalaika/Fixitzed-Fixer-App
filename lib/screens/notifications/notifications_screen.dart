@@ -3,9 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:fixitzed_fixer_app/services/notifications_service.dart';
 import 'package:fixitzed_fixer_app/models/notification_item.dart';
+import 'package:fixitzed_fixer_app/screens/notifications/widgets/notification_details_sheet.dart';
 import 'package:fixitzed_fixer_app/state/app_sync.dart';
+import 'package:fixitzed_fixer_app/services/notifications_service.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -20,6 +21,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   List<NotificationItem> _items = const [];
   StreamSubscription<AppSyncEvent>? _subscription;
   final Set<int> _deleting = <int>{};
+  final Set<int> _markingRead = <int>{};
   final Set<String> _pendingRemovalKeys = <String>{};
 
   @override
@@ -120,33 +122,63 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               : 'Notification hidden locally. Could not sync with server.',
           style: GoogleFonts.urbanist(color: Colors.white),
         ),
-        backgroundColor:
-            synced ? const Color(0xFF2E7D32) : const Color(0xFFE67E22),
+        backgroundColor: synced
+            ? const Color(0xFF2E7D32)
+            : const Color(0xFFE67E22),
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
   Future<void> _handleTap(NotificationItem notification) async {
-    if (!notification.read) {
-      final ok = await _svc.markRead(notification.id);
-      if (ok && mounted) {
-        await _load(silent: true);
+    NotificationItem? current;
+    for (final item in _items) {
+      if (item.id == notification.id) {
+        current = item;
+        break;
       }
     }
 
+    final selected = current ?? notification;
+    final itemForSheet = _markAsReadOptimistically(selected);
     if (!mounted) return;
+    await NotificationDetailsSheet.show(context, notification: itemForSheet);
+  }
 
-    final requestId = notification.serviceRequestId;
-    if (requestId == null) {
-      return;
+  NotificationItem _markAsReadOptimistically(NotificationItem notification) {
+    if (notification.read || _markingRead.contains(notification.id)) {
+      return notification.read
+          ? notification
+          : notification.copyWith(
+              read: true,
+              readAt: notification.readAt ?? DateTime.now(),
+            );
     }
 
-    await Navigator.of(
-      context,
-    ).pushNamed('/booking_detail', arguments: {'id': requestId});
+    final updated = notification.copyWith(
+      read: true,
+      readAt: notification.readAt ?? DateTime.now(),
+    );
 
-    if (mounted) {
+    setState(() {
+      _items = [
+        for (final item in _items)
+          if (item.id == notification.id) updated else item,
+      ];
+      _markingRead.add(notification.id);
+    });
+
+    unawaited(_syncReadState(notification.id));
+    return updated;
+  }
+
+  Future<void> _syncReadState(int notificationId) async {
+    final ok = await _svc.markRead(notificationId);
+    if (!mounted) return;
+
+    setState(() => _markingRead.remove(notificationId));
+
+    if (!ok) {
       await _load(silent: true);
     }
   }
@@ -169,79 +201,109 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Widget _tile(NotificationItem n) {
     final timeStr = DateFormat('HH:mm').format(n.createdAt);
-    return InkWell(
-      onTap: () => _handleTap(n),
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 10),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF3F5F7),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: const BoxDecoration(
-                color: Color(0xFFF6EEEA),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.event_available_rounded,
-                color: Color(0xFFF1592A),
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final visual = NotificationVisualStyle.resolve(theme, n);
+    final title = n.title.trim().isEmpty ? 'Notification' : n.title.trim();
+    final preview = n.body.trim().isEmpty
+        ? 'No additional details available.'
+        : n.body.trim();
+    final cardColor = n.read
+        ? theme.brightness == Brightness.dark
+              ? Color.alphaBlend(
+                  Colors.white.withValues(alpha: 0.04),
+                  scheme.surface,
+                )
+              : const Color(0xFFF3F5F7)
+        : Color.alphaBlend(
+            const Color(0xFFF1592A).withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.12 : 0.05,
+            ),
+            scheme.surface,
+          );
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _handleTap(n),
+        borderRadius: BorderRadius.circular(20),
+        splashColor: const Color(0xFFF1592A).withValues(alpha: 0.1),
+        highlightColor: const Color(0xFFF1592A).withValues(alpha: 0.04),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Ink(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: n.read
+                    ? Colors.transparent
+                    : const Color(0xFFF1592A).withValues(alpha: 0.12),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: visual.backgroundColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(visual.icon, color: visual.accentColor),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          n.title.isEmpty ? 'Notification' : n.title,
-                          style: GoogleFonts.urbanist(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 16,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: GoogleFonts.urbanist(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                                color: scheme.onSurface,
+                              ),
+                            ),
                           ),
-                        ),
+                          Text(
+                            timeStr,
+                            style: GoogleFonts.urbanist(
+                              color: scheme.onSurface.withValues(alpha: 0.45),
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 6),
                       Text(
-                        timeStr,
+                        preview,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.urbanist(
-                          color: Colors.black45,
-                          fontSize: 12,
+                          color: scheme.onSurface.withValues(alpha: 0.62),
+                          height: 1.25,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    n.body,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.urbanist(
-                      color: Colors.black54,
-                      height: 1.25,
+                ),
+                if (!n.read)
+                  Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.only(left: 8, top: 6),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF1592A),
+                      shape: BoxShape.circle,
                     ),
                   ),
-                ],
-              ),
+              ],
             ),
-            if (!n.read)
-              Container(
-                width: 8,
-                height: 8,
-                margin: const EdgeInsets.only(left: 8, top: 6),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF1592A),
-                  shape: BoxShape.circle,
-                ),
-              ),
-          ],
+          ),
         ),
       ),
     );
@@ -254,12 +316,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final earlier = <NotificationItem>[];
     for (final n in _items) {
       final d = n.createdAt;
-      if (_isToday(d))
+      if (_isToday(d)) {
         today.add(n);
-      else if (_isYesterday(d))
+      } else if (_isYesterday(d)) {
         yesterday.add(n);
-      else
+      } else {
         earlier.add(n);
+      }
     }
 
     return Scaffold(
@@ -269,7 +332,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: Theme.of(context).colorScheme.onBackground,
+            color: Theme.of(context).colorScheme.onSurface,
           ),
           onPressed: () => Navigator.of(context).pop(),
         ),
@@ -277,7 +340,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         title: Text(
           'Notification',
           style: GoogleFonts.urbanist(
-            color: Theme.of(context).colorScheme.onBackground,
+            color: Theme.of(context).colorScheme.onSurface,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -307,7 +370,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               ? null
                               : () async {
                                   final ok = await _svc.markAllRead();
-                                  if (ok) _load();
+                                  if (ok) {
+                                    await _load();
+                                  }
                                 },
                           child: const Text(
                             'Mark All As Read',
@@ -356,7 +421,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           const SizedBox(height: 12),
                           Text(
                             'No notifications',
-                            style: GoogleFonts.urbanist(color: Colors.black54),
+                            style: GoogleFonts.urbanist(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurface.withValues(alpha: 0.62),
+                            ),
                           ),
                         ],
                       ),
