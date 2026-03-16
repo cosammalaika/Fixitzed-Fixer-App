@@ -8,10 +8,15 @@ class ServiceRequest {
   final DateTime? scheduledAt;
   final DateTime? declinedAt;
   final DateTime? snoozedUntil;
+  final DateTime? canceledAt;
   final String status;
   final String? location;
   final String? customerContact;
   final bool customerContactVisible;
+  final String? cancellationReasonKey;
+  final String? cancellationReasonLabel;
+  final String? cancellationNote;
+  final String? canceledBy;
 
   ServiceRequest({
     required this.id,
@@ -21,10 +26,15 @@ class ServiceRequest {
     required this.scheduledAt,
     required this.declinedAt,
     required this.snoozedUntil,
+    required this.canceledAt,
     required this.status,
     required this.location,
     required this.customerContact,
     required this.customerContactVisible,
+    required this.cancellationReasonKey,
+    required this.cancellationReasonLabel,
+    required this.cancellationNote,
+    required this.canceledBy,
   });
 
   factory ServiceRequest.fromJson(Map<String, dynamic> j) {
@@ -143,10 +153,17 @@ class ServiceRequest {
       snoozedUntil: (j['fixer_snoozed_until'] is String)
           ? DateTime.tryParse(j['fixer_snoozed_until'])
           : null,
+      canceledAt: (j['canceled_at'] is String)
+          ? DateTime.tryParse(j['canceled_at'])
+          : null,
       status: status,
       location: loc,
       customerContact: contact,
       customerContactVisible: contactVisible,
+      cancellationReasonKey: firstNonEmpty([j['cancellation_reason_key']]),
+      cancellationReasonLabel: firstNonEmpty([j['cancellation_reason_label']]),
+      cancellationNote: firstNonEmpty([j['cancellation_note']]),
+      canceledBy: firstNonEmpty([j['canceled_by']]),
     );
   }
 
@@ -159,10 +176,15 @@ class ServiceRequest {
       'scheduled_at': scheduledAt?.toIso8601String(),
       'declined_at': declinedAt?.toIso8601String(),
       'fixer_snoozed_until': snoozedUntil?.toIso8601String(),
+      'canceled_at': canceledAt?.toIso8601String(),
       'status': status,
       'location': location,
       'customer_contact': customerContact,
       'customer_contact_visible': customerContactVisible,
+      'cancellation_reason_key': cancellationReasonKey,
+      'cancellation_reason_label': cancellationReasonLabel,
+      'cancellation_note': cancellationNote,
+      'canceled_by': canceledBy,
     };
   }
 }

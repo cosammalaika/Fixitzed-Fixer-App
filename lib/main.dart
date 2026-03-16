@@ -21,10 +21,13 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:fixitzed_fixer_app/common/connectivity/connectivity_overlay.dart';
 import 'package:fixitzed_fixer_app/widgets/session_redirector.dart';
 
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppTheme.load();
   await LocalNotificationService.instance.init();
+  LocalNotificationService.instance.bindNavigator(appNavigatorKey);
   await FcmService.instance.init();
   runApp(const ProviderScope(child: FixerApp()));
 }
@@ -38,6 +41,7 @@ class FixerApp extends ConsumerWidget {
       valueListenable: AppTheme.mode,
       builder: (context, mode, _) {
         return MaterialApp(
+          navigatorKey: appNavigatorKey,
           title: 'FixItZed Fixer',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light().copyWith(

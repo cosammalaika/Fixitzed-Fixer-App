@@ -127,6 +127,30 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
+  Future<void> _handleTap(NotificationItem notification) async {
+    if (!notification.read) {
+      final ok = await _svc.markRead(notification.id);
+      if (ok && mounted) {
+        await _load(silent: true);
+      }
+    }
+
+    if (!mounted) return;
+
+    final requestId = notification.serviceRequestId;
+    if (requestId == null) {
+      return;
+    }
+
+    await Navigator.of(
+      context,
+    ).pushNamed('/booking_detail', arguments: {'id': requestId});
+
+    if (mounted) {
+      await _load(silent: true);
+    }
+  }
+
   Widget _dismissibleTile(NotificationItem notification) {
     final key = 'notif_${notification.id}';
     return Dismissible(
@@ -145,76 +169,80 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Widget _tile(NotificationItem n) {
     final timeStr = DateFormat('HH:mm').format(n.createdAt);
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3F5F7),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(
-              color: Color(0xFFF6EEEA),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.event_available_rounded,
-              color: Color(0xFFF1592A),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        n.title.isEmpty ? 'Notification' : n.title,
-                        style: GoogleFonts.urbanist(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      timeStr,
-                      style: GoogleFonts.urbanist(
-                        color: Colors.black45,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  n.body,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.urbanist(
-                    color: Colors.black54,
-                    height: 1.25,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (!n.read)
+    return InkWell(
+      onTap: () => _handleTap(n),
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF3F5F7),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Container(
-              width: 8,
-              height: 8,
-              margin: const EdgeInsets.only(left: 8, top: 6),
+              padding: const EdgeInsets.all(12),
               decoration: const BoxDecoration(
-                color: Color(0xFFF1592A),
+                color: Color(0xFFF6EEEA),
                 shape: BoxShape.circle,
               ),
+              child: const Icon(
+                Icons.event_available_rounded,
+                color: Color(0xFFF1592A),
+              ),
             ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          n.title.isEmpty ? 'Notification' : n.title,
+                          style: GoogleFonts.urbanist(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        timeStr,
+                        style: GoogleFonts.urbanist(
+                          color: Colors.black45,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    n.body,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.urbanist(
+                      color: Colors.black54,
+                      height: 1.25,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (!n.read)
+              Container(
+                width: 8,
+                height: 8,
+                margin: const EdgeInsets.only(left: 8, top: 6),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF1592A),
+                  shape: BoxShape.circle,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

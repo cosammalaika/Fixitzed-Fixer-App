@@ -287,6 +287,25 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     return DateFormat('d MMM yyyy • HH:mm').format(dt);
   }
 
+  bool _isCancelledStatus(String value) {
+    final normalized = value.trim().toLowerCase();
+    return normalized == 'cancelled' || normalized == 'canceled';
+  }
+
+  String _formatActor(dynamic raw) {
+    final normalized = raw?.toString().trim().toLowerCase() ?? '';
+    switch (normalized) {
+      case 'customer':
+        return 'Customer';
+      case 'fixer':
+        return 'Fixer';
+      case 'admin':
+        return 'Admin';
+      default:
+        return '—';
+    }
+  }
+
   String _status() => (_data['status'] ?? '').toString();
 
   Map<String, dynamic> _mapOf(dynamic raw) {
@@ -629,6 +648,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     final location = (_data['location'] ?? '').toString();
     final status = _status();
     final statusLower = status.toLowerCase();
+    final isCancelled = _isCancelledStatus(statusLower);
     final contactVisible =
         _isTruthy(_data['customer_contact_visible']) ||
         statusLower == 'accepted' ||
@@ -805,6 +825,39 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
                       ),
                     ],
                   ),
+                  if (isCancelled) ...[
+                    const SizedBox(height: 20),
+                    _infoSection(
+                      title: 'Cancellation details',
+                      children: [
+                        _infoTile(
+                          Icons.person_off_rounded,
+                          'Canceled by',
+                          _formatActor(_data['canceled_by']),
+                        ),
+                        _infoTile(
+                          Icons.rule_folder_rounded,
+                          'Reason',
+                          (_data['cancellation_reason_label'] ?? '—')
+                              .toString(),
+                        ),
+                        if ((_data['cancellation_note'] ?? '')
+                            .toString()
+                            .trim()
+                            .isNotEmpty)
+                          _infoTile(
+                            Icons.notes_rounded,
+                            'Additional note',
+                            (_data['cancellation_note'] ?? '').toString(),
+                          ),
+                        _infoTile(
+                          Icons.event_busy_rounded,
+                          'Canceled at',
+                          _formatDateTime(_data['canceled_at']) ?? '—',
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   _actionSection(status, const Color(0xFF2E7D32)),
                   const SizedBox(height: 12),
@@ -942,7 +995,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     final canDecline = lower == 'pending';
     final canSnooze = lower == 'pending';
     final isUnavailable =
-        lower == 'expired' || lower == 'cancelled' || lower == 'declined';
+        lower == 'expired' || _isCancelledStatus(lower) || lower == 'declined';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -970,7 +1023,9 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'This request is no longer available.',
+                    _isCancelledStatus(lower)
+                        ? 'This booking was cancelled by the customer.'
+                        : 'This request is no longer available.',
                     style: GoogleFonts.urbanist(
                       fontWeight: FontWeight.w600,
                       color: Colors.black87,
