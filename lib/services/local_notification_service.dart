@@ -50,7 +50,7 @@ class LocalNotificationService {
     await _plugin.initialize(
       settings,
       onDidReceiveNotificationResponse: (response) {
-        _handlePayload(response.payload);
+        handlePayload(response.payload);
       },
       onDidReceiveBackgroundNotificationResponse: _backgroundTapHandler,
     );
@@ -95,7 +95,7 @@ class LocalNotificationService {
       if (_pendingPayload != null) {
         final payload = _pendingPayload;
         _pendingPayload = null;
-        _handlePayload(payload);
+        handlePayload(payload);
       }
     });
   }
@@ -149,7 +149,7 @@ class LocalNotificationService {
     );
   }
 
-  void _handlePayload(String? payload) {
+  void handlePayload(String? payload) {
     if (payload == null || payload.isEmpty) {
       return;
     }
@@ -173,6 +173,11 @@ class LocalNotificationService {
       if (id != null) {
         navigator.pushNamed('/booking_detail', arguments: {'id': id});
       }
+      return;
+    }
+
+    if (payload.startsWith('remote_notification:')) {
+      navigator.pushNamed('/notifications');
     }
   }
 
