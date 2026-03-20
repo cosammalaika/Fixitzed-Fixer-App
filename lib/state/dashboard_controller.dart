@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'package:fixitzed_fixer_app/data/models/dashboard_snapshot.dart';
 import 'package:fixitzed_fixer_app/data/repositories/dashboard_repository.dart';
@@ -92,7 +93,5 @@ class FixerDashboardController
 final fixerDashboardControllerProvider = StateNotifierProvider<
     FixerDashboardController, AsyncValue<FixerDashboardSnapshot>>((ref) {
   final repository = ref.read(fixerDashboardRepositoryProvider);
-  final controller = FixerDashboardController(repository, ref);
-  ref.onDispose(controller.dispose);
-  return controller;
+  return FixerDashboardController(repository, ref);
 });

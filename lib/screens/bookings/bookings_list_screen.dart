@@ -38,7 +38,7 @@ class _BookingsListScreenState extends State<BookingsListScreen>
     return Consumer(
       builder: (context, ref, _) {
         final bookingsAsync = ref.watch(fixerBookingsProvider);
-        final current = bookingsAsync.valueOrNull;
+        final current = bookingsAsync.value;
         final isRefreshing = bookingsAsync.isLoading && current != null;
         return Scaffold(
           appBar: AppBar(

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'package:fixitzed_fixer_app/models/service_request.dart';
 import 'package:fixitzed_fixer_app/services/fixer_service.dart';
@@ -131,7 +132,5 @@ final fixerBookingsProvider =
       AsyncValue<FixerBookingsState>
     >((ref) {
       final service = ref.read(fixerServiceProvider);
-      final controller = FixerBookingsController(service, ref);
-      ref.onDispose(controller.dispose);
-      return controller;
+      return FixerBookingsController(service, ref);
     });

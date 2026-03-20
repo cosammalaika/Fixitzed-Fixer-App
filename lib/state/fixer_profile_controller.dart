@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/legacy.dart';
 
 import 'package:fixitzed_fixer_app/models/fixer.dart';
 import 'package:fixitzed_fixer_app/services/fixer_service.dart';
@@ -50,17 +51,11 @@ class FixerProfileController extends StateNotifier<AsyncValue<Fixer?>> {
   }
 }
 
-final AutoDisposeStateNotifierProvider<
-  FixerProfileController,
-  AsyncValue<Fixer?>
->
-fixerProfileProvider =
+final fixerProfileProvider =
     StateNotifierProvider.autoDispose<
       FixerProfileController,
       AsyncValue<Fixer?>
     >((ref) {
       final service = ref.read(fixerServiceProvider);
-      final controller = FixerProfileController(service, ref);
-      ref.onDispose(controller.dispose);
-      return controller;
+      return FixerProfileController(service, ref);
     });

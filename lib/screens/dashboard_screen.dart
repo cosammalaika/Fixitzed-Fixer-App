@@ -13,7 +13,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:fixitzed_fixer_app/core/utils/dialer.dart';
 import 'package:fixitzed_fixer_app/widgets/skeletons.dart';
-import 'package:fixitzed_fixer_app/widgets/swipe_action_button.dart';
 
 const Color _fixerAcceptColor = Color(0xFF2E7D32);
 
@@ -53,7 +52,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
 
   Future<void> _refreshDashboard() async {
-    await Future.wait([
+    await Future.wait<void>([
       ref.read(fixerDashboardControllerProvider.notifier).refresh(
         forceRefresh: true,
       ),
@@ -199,7 +198,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
     final dashboardAsync = ref.watch(fixerDashboardControllerProvider);
     final bookingsAsync = ref.watch(fixerBookingsProvider);
-    final snapshot = dashboardAsync.valueOrNull;
+    final snapshot = dashboardAsync.value;
     final isInitialLoading = dashboardAsync.isLoading && snapshot == null;
 
     if (isInitialLoading) {
@@ -221,7 +220,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     }
 
     _coins = snapshot.coins;
-    final bookingState = bookingsAsync.valueOrNull;
+    final bookingState = bookingsAsync.value;
     final activeCount =
         bookingState?.active.length ??
         snapshot.activeRequests

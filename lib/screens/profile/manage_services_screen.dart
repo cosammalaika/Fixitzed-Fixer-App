@@ -39,8 +39,8 @@ class _ManageServicesScreenState extends ConsumerState<ManageServicesScreen> {
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(fixerProfileProvider);
     final catalogAsync = ref.watch(serviceCatalogProvider);
-    final profile = profileAsync.valueOrNull;
-    final catalog = catalogAsync.valueOrNull;
+    final profile = profileAsync.value;
+    final catalog = catalogAsync.value;
 
     if (!_seeded && profile != null) {
       _selected
@@ -205,9 +205,9 @@ class _ManageServicesScreenState extends ConsumerState<ManageServicesScreen> {
     _catalogSignature = '';
     _pendingCatalogSignature = null;
     ref.invalidate(serviceCatalogProvider);
-    await Future.wait([
+    await Future.wait<void>([
       ref.read(fixerProfileProvider.notifier).refresh(),
-      ref.read(serviceCatalogProvider.future),
+      ref.read(serviceCatalogProvider.future).then<void>((_) {}),
     ]);
   }
 
