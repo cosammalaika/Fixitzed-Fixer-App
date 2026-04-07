@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:fixitzed_fixer_app/services/fixer_service.dart';
+import 'package:fixitzed_fixer_app/core/app_theme.dart';
 import 'package:fixitzed_fixer_app/ui/snack.dart';
 import 'package:fixitzed_fixer_app/widgets/swipe_action_button.dart';
 import 'package:flutter/material.dart';
@@ -39,7 +40,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           '[BookingDetail] route args type=Map keys=${rawArgs.keys.map((e) => e.toString()).toList()}',
         );
       } else {
-        debugPrint('[BookingDetail] route args type=${rawArgs.runtimeType} value=$rawArgs');
+        debugPrint(
+          '[BookingDetail] route args type=${rawArgs.runtimeType} value=$rawArgs',
+        );
       }
     }
     final payload = _parsePayload(rawArgs);
@@ -65,8 +68,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
       Map<String, dynamic>? detail;
       final rawDetail = map['request'] ?? map['detail'] ?? map['data'];
       if (rawDetail is Map) {
-        detail =
-            rawDetail.map((key, value) => MapEntry(key.toString(), value));
+        detail = rawDetail.map((key, value) => MapEntry(key.toString(), value));
       }
       return _Payload(id: id, detail: detail);
     }
@@ -159,7 +161,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 ? Center(
                     child: Text(
                       'Unable to load booking details',
-                      style: GoogleFonts.urbanist(color: Colors.black54),
+                      style: GoogleFonts.urbanist(
+                        color: theme.fx.textSecondary,
+                      ),
                     ),
                   )
                 : _FixerBookingSheet(
@@ -434,6 +438,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     bool submitting = false;
 
     final theme = Theme.of(context);
+    final colors = theme.fx;
     return showModalBottomSheet<double>(
       context: context,
       isScrollControlled: true,
@@ -454,13 +459,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
                   top: Radius.circular(24),
                 ),
                 child: DecoratedBox(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFFFFF8F3), Colors.white],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                  ),
+                  decoration: BoxDecoration(gradient: colors.sheetGradient),
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(20, 16, 20, bottom + 20),
                     child: Column(
@@ -472,7 +471,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
                             width: 48,
                             height: 4,
                             decoration: BoxDecoration(
-                              color: Colors.black12,
+                              color: colors.border,
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
@@ -552,7 +551,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
                           ),
                           decoration: InputDecoration(
                             filled: true,
-                            fillColor: const Color(0xFFF3F5F7),
+                            fillColor: colors.surfaceSubtle,
                             hintText: 'e.g., 250.00',
                             prefixIcon: const Icon(
                               Icons.currency_exchange_rounded,
@@ -638,7 +637,9 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final brand = const Color(0xFFF1592A);
+    final theme = Theme.of(context);
+    final colors = theme.fx;
+    final brand = colors.brand;
     final service = _mapOf(_data['service']);
     final customer = _mapOf(_data['customer']);
     final title = (service['name'] ?? service['title'] ?? 'Service').toString();
@@ -680,13 +681,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         child: DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFFFFF8F3), Colors.white],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
+          decoration: BoxDecoration(gradient: colors.sheetGradient),
           child: Padding(
             padding: EdgeInsets.only(
               left: 20,
@@ -703,7 +698,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
                       width: 52,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.black12,
+                        color: colors.border,
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
@@ -920,10 +915,11 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
   }
 
   Widget _infoSection({required String title, required List<Widget> children}) {
+    final colors = Theme.of(context).fx;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F5F7),
+        color: colors.surfaceSubtle,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -949,6 +945,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     String value, {
     Widget? trailing,
   }) {
+    final colors = Theme.of(context).fx;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -957,10 +954,10 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: colors.surfaceRaised,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: const Color(0xFFF1592A)),
+            child: Icon(icon, color: colors.brand),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -970,7 +967,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
                 Text(
                   label,
                   style: GoogleFonts.urbanist(
-                    color: Colors.black54,
+                    color: colors.textSecondary,
                     fontSize: 12,
                   ),
                 ),
@@ -989,6 +986,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
   }
 
   Widget _actionSection(String status, Color brand) {
+    final colors = Theme.of(context).fx;
     final lower = status.toLowerCase();
     final canAccept = lower == 'pending' && _hasAccess;
     final canSendBill = lower == 'accepted';
@@ -1004,21 +1002,18 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF2EA),
+              color: colors.surfaceTint,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
+                  decoration: BoxDecoration(
+                    color: colors.surfaceRaised,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
-                    Icons.info_outline_rounded,
-                    color: Color(0xFFF1592A),
-                  ),
+                  child: Icon(Icons.info_outline_rounded, color: colors.brand),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1028,7 +1023,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
                         : 'This request is no longer available.',
                     style: GoogleFonts.urbanist(
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      color: colors.textPrimary,
                     ),
                   ),
                 ),
@@ -1040,20 +1035,20 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFF2EA),
+              color: colors.surfaceTint,
               borderRadius: BorderRadius.circular(14),
             ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
+                  decoration: BoxDecoration(
+                    color: colors.surfaceRaised,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.monetization_on_outlined,
-                    color: Color(0xFFF1592A),
+                    color: colors.brand,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1062,7 +1057,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
                     'You need an active subscription or coins to take this job.',
                     style: GoogleFonts.urbanist(
                       fontWeight: FontWeight.w600,
-                      color: Colors.black87,
+                      color: colors.textPrimary,
                     ),
                   ),
                 ),

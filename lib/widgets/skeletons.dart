@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fixitzed_fixer_app/core/app_theme.dart';
 import 'package:shimmer/shimmer.dart';
 
 class FixerDashboardSkeleton extends StatelessWidget {
@@ -217,24 +218,17 @@ class _ShimmerWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseColor = isDark ? const Color(0xFF2D2D30) : const Color(0xFFE3E6EC);
-    final highlightColor =
-        isDark ? const Color(0xFF3C3C40) : const Color(0xFFF2F4F8);
+    final colors = Theme.of(context).fx;
     return Shimmer.fromColors(
-      baseColor: baseColor,
-      highlightColor: highlightColor,
+      baseColor: colors.skeletonBase,
+      highlightColor: colors.skeletonHighlight,
       child: child,
     );
   }
 }
 
 class _SkeletonBox extends StatelessWidget {
-  const _SkeletonBox({
-    this.width,
-    required this.height,
-    this.radius = 12,
-  });
+  const _SkeletonBox({this.width, required this.height, this.radius = 12});
 
   final double? width;
   final double height;
@@ -247,7 +241,7 @@ class _SkeletonBox extends StatelessWidget {
       child: Container(
         width: width ?? double.infinity,
         height: height,
-        color: Colors.white,
+        color: Theme.of(context).fx.surfaceRaised,
       ),
     );
   }
@@ -265,7 +259,7 @@ class _SkeletonCircle extends StatelessWidget {
       child: Container(
         width: diameter,
         height: diameter,
-        color: Colors.white,
+        color: Theme.of(context).fx.surfaceRaised,
       ),
     );
   }

@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/app_theme.dart';
 import '../../services/auth_service.dart';
 
 class ForgotPasswordSheet extends StatefulWidget {
-  const ForgotPasswordSheet({
-    super.key,
-    this.initialIdentifier,
-  });
+  const ForgotPasswordSheet({super.key, this.initialIdentifier});
 
   final String? initialIdentifier;
 
@@ -85,10 +83,7 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
 
     if (result.success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.message),
-          backgroundColor: Colors.green,
-        ),
+        SnackBar(content: Text(result.message), backgroundColor: Colors.green),
       );
       Navigator.of(context).pop(true);
     } else {
@@ -105,18 +100,19 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
   Widget build(BuildContext context) {
     final bottom = MediaQuery.of(context).viewInsets.bottom;
     final theme = Theme.of(context);
-    final accent = const Color(0xFFF1592A);
+    final colors = theme.fx;
+    final accent = colors.brand;
 
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.fromLTRB(20, 16, 20, bottom + 24),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
+            color: colors.surface,
             borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.08),
+                color: colors.shadow,
                 blurRadius: 24,
                 offset: const Offset(0, 12),
               ),
@@ -133,7 +129,7 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
                     width: 48,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.black12,
+                      color: colors.border,
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
@@ -149,7 +145,9 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        _codeSent ? Icons.lock_reset_rounded : Icons.mail_outline_rounded,
+                        _codeSent
+                            ? Icons.lock_reset_rounded
+                            : Icons.mail_outline_rounded,
                         color: accent,
                       ),
                     ),
@@ -185,7 +183,9 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
                   duration: const Duration(milliseconds: 250),
                   switchInCurve: Curves.easeOut,
                   switchOutCurve: Curves.easeIn,
-                  child: _codeSent ? _buildResetForm(accent) : _buildRequestForm(accent),
+                  child: _codeSent
+                      ? _buildResetForm(accent)
+                      : _buildRequestForm(accent),
                 ),
               ],
             ),
@@ -254,9 +254,7 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
           TextFormField(
             controller: _codeCtrl,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: '6-digit code',
-            ),
+            decoration: const InputDecoration(labelText: '6-digit code'),
             validator: (value) {
               final trimmed = value?.trim() ?? '';
               if (trimmed.length != 6) {
@@ -269,9 +267,7 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
           TextFormField(
             controller: _passwordCtrl,
             obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'New password',
-            ),
+            decoration: const InputDecoration(labelText: 'New password'),
             validator: (value) {
               final trimmed = value ?? '';
               if (trimmed.length < 8) {
@@ -284,9 +280,7 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
           TextFormField(
             controller: _confirmCtrl,
             obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Confirm password',
-            ),
+            decoration: const InputDecoration(labelText: 'Confirm password'),
             validator: (value) {
               if (value != _passwordCtrl.text) {
                 return 'Passwords do not match.';
@@ -322,10 +316,10 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
           ),
           const SizedBox(height: 10),
           TextButton(
-            onPressed: _sending ? null : () => setState(() => _codeSent = false),
-            style: TextButton.styleFrom(
-              foregroundColor: accent,
-            ),
+            onPressed: _sending
+                ? null
+                : () => setState(() => _codeSent = false),
+            style: TextButton.styleFrom(foregroundColor: accent),
             child: const Text(
               'Send code again',
               style: TextStyle(fontWeight: FontWeight.w600),

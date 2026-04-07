@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:fixitzed_fixer_app/core/app_theme.dart';
+
 class OfflinePlaceholder extends StatelessWidget {
   const OfflinePlaceholder({
     super.key,
@@ -22,6 +24,7 @@ class OfflinePlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final colors = theme.fx;
 
     return Center(
       child: Padding(
@@ -33,15 +36,15 @@ class OfflinePlaceholder extends StatelessWidget {
               width: 148,
               height: 148,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFFC7A0), Color(0xFFF1592A)],
+                gradient: LinearGradient(
+                  colors: [colors.brandAccent, colors.brand],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(36),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFF1592A).withOpacity(0.28),
+                    color: colors.brand.withValues(alpha: 0.28),
                     blurRadius: 32,
                     offset: const Offset(0, 18),
                   ),
@@ -53,7 +56,7 @@ class OfflinePlaceholder extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.22),
+                      color: Colors.white.withValues(alpha: 0.22),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
@@ -72,7 +75,7 @@ class OfflinePlaceholder extends StatelessWidget {
               style: GoogleFonts.urbanist(
                 fontWeight: FontWeight.w800,
                 fontSize: 18,
-                color: colorScheme.onBackground,
+                color: colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 12),
@@ -81,7 +84,7 @@ class OfflinePlaceholder extends StatelessWidget {
               textAlign: TextAlign.center,
               style: GoogleFonts.urbanist(
                 fontSize: 15,
-                color: theme.textTheme.bodyMedium?.color?.withOpacity(0.65),
+                color: colors.textSecondary,
               ),
             ),
             // if (details != null && details!.isNotEmpty) ...[
@@ -109,7 +112,7 @@ class OfflinePlaceholder extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: onRetry,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF1592A),
+                  backgroundColor: colors.brand,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 32,
@@ -118,7 +121,7 @@ class OfflinePlaceholder extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(24),
                   ),
-                  shadowColor: const Color(0xFFF1592A).withOpacity(0.38),
+                  shadowColor: colors.brand.withValues(alpha: 0.38),
                   elevation: 8,
                 ),
                 icon: const Icon(Icons.refresh_rounded),

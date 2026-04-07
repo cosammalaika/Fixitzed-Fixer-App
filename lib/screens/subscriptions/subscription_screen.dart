@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:fixitzed_fixer_app/core/app_theme.dart';
 import 'package:fixitzed_fixer_app/services/api_client.dart';
 import 'package:fixitzed_fixer_app/screens/subscriptions/subscription_checkout_sheet.dart';
 
@@ -46,8 +47,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const brand = Color(0xFFF1592A);
-    const accent = Color(0xFFFFA26C);
+    final colors = Theme.of(context).fx;
+    final brand = colors.brand;
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -75,11 +76,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     padding: const EdgeInsets.all(18),
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [brand, accent],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      gradient: colors.brandGradient,
                       borderRadius: BorderRadius.circular(22),
                       boxShadow: [
                         BoxShadow(
@@ -146,19 +143,21 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     final priceCents = (p['price_cents'] ?? 0) as int;
     final price = (priceCents / 100).toStringAsFixed(2);
     final days = (p['valid_days'] ?? 0).toString();
+    final colors = Theme.of(context).fx;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
+          if (Theme.of(context).brightness == Brightness.light)
+            BoxShadow(
+              color: colors.shadow,
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
         ],
       ),
       child: Column(
@@ -169,13 +168,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             children: [
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: const BoxDecoration(
-                  color: Color(0x1AF1592A),
+                decoration: BoxDecoration(
+                  color: colors.surfaceTint,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.workspace_premium_rounded,
-                  color: Color(0xFFF1592A),
+                  color: colors.brand,
                 ),
               ),
               const SizedBox(width: 12),
@@ -245,7 +244,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFFF1592A),
+                backgroundColor: colors.brand,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
                 shape: RoundedRectangleBorder(
@@ -261,22 +260,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 
   Widget _pill(IconData icon, String text) {
+    final colors = Theme.of(context).fx;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0x1AF1592A),
+        color: colors.surfaceTint,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: const Color(0xFFF1592A)),
+          Icon(icon, size: 16, color: colors.brand),
           const SizedBox(width: 6),
           Text(
             text,
             style: GoogleFonts.urbanist(
               fontWeight: FontWeight.w600,
-              color: const Color(0xFFF1592A),
+              color: colors.brand,
             ),
           ),
         ],

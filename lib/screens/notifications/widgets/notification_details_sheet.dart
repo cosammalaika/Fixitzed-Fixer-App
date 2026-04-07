@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:fixitzed_fixer_app/core/app_theme.dart';
 import 'package:fixitzed_fixer_app/models/notification_item.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -31,6 +32,7 @@ class NotificationDetailsSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final colors = theme.fx;
     final visual = NotificationVisualStyle.resolve(theme, notification);
     final formattedDate = DateFormat(
       'dd MMM yyyy • HH:mm',
@@ -45,14 +47,9 @@ class NotificationDetailsSheet extends StatelessWidget {
     final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
     final size = MediaQuery.sizeOf(context);
     final sheetTop = theme.brightness == Brightness.dark
-        ? Color.alphaBlend(
-            const Color(0xFFF1592A).withValues(alpha: 0.12),
-            scheme.surface,
-          )
-        : const Color(0xFFFFF5EE);
-    final sheetBottom = theme.brightness == Brightness.dark
-        ? scheme.surface
-        : scheme.surface;
+        ? colors.surfaceRaised
+        : colors.surfaceTint;
+    final sheetBottom = colors.surface;
     final cardBorder = scheme.outline.withValues(
       alpha: theme.brightness == Brightness.dark ? 0.28 : 0.12,
     );
@@ -94,11 +91,7 @@ class NotificationDetailsSheet extends StatelessWidget {
                     borderRadius: BorderRadius.circular(32),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(
-                          alpha: theme.brightness == Brightness.dark
-                              ? 0.34
-                              : 0.12,
-                        ),
+                        color: colors.shadow,
                         blurRadius: 28,
                         offset: const Offset(0, 16),
                       ),
@@ -124,16 +117,12 @@ class NotificationDetailsSheet extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: scheme.surface,
+                            color: colors.surface,
                             borderRadius: BorderRadius.circular(26),
                             border: Border.all(color: cardBorder),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(
-                                  alpha: theme.brightness == Brightness.dark
-                                      ? 0.18
-                                      : 0.05,
-                                ),
+                                color: colors.shadow,
                                 blurRadius: 18,
                                 offset: const Offset(0, 10),
                               ),
@@ -178,7 +167,7 @@ class NotificationDetailsSheet extends StatelessWidget {
                                     width: 48,
                                     height: 48,
                                     decoration: BoxDecoration(
-                                      color: scheme.surface,
+                                      color: colors.surfaceRaised,
                                       shape: BoxShape.circle,
                                       border: Border.all(color: cardBorder),
                                     ),
@@ -198,16 +187,12 @@ class NotificationDetailsSheet extends StatelessWidget {
                           width: double.infinity,
                           padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
                           decoration: BoxDecoration(
-                            color: scheme.surface,
+                            color: colors.surface,
                             borderRadius: BorderRadius.circular(28),
                             border: Border.all(color: cardBorder),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(
-                                  alpha: theme.brightness == Brightness.dark
-                                      ? 0.16
-                                      : 0.04,
-                                ),
+                                color: colors.shadow,
                                 blurRadius: 16,
                                 offset: const Offset(0, 8),
                               ),
@@ -261,7 +246,7 @@ class NotificationDetailsSheet extends StatelessWidget {
                                 child: TextButton(
                                   onPressed: () => Navigator.of(context).pop(),
                                   style: TextButton.styleFrom(
-                                    foregroundColor: const Color(0xFFF1592A),
+                                    foregroundColor: colors.brand,
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 10,
                                       vertical: 8,
@@ -308,6 +293,7 @@ class NotificationVisualStyle {
     NotificationItem notification,
   ) {
     final scheme = theme.colorScheme;
+    final colors = theme.fx;
     final hints = <String>[
       notification.type,
       notification.iconKey ?? '',
@@ -319,10 +305,10 @@ class NotificationVisualStyle {
       notification.data['category']?.toString() ?? '',
     ].join(' ').toLowerCase();
 
-    const brand = Color(0xFFF1592A);
-    const green = Color(0xFF2E9D6A);
-    const blue = Color(0xFF3276E8);
-    const red = Color(0xFFE45A4F);
+    final brand = colors.brand;
+    final green = colors.success;
+    final blue = colors.info;
+    final red = colors.danger;
 
     Color tinted(Color color, double opacity) {
       return Color.alphaBlend(color.withValues(alpha: opacity), scheme.surface);
@@ -417,16 +403,17 @@ class _StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final colors = theme.fx;
     final background = read
         ? scheme.onSurface.withValues(
             alpha: theme.brightness == Brightness.dark ? 0.14 : 0.08,
           )
-        : const Color(0xFFF1592A).withValues(
+        : colors.brand.withValues(
             alpha: theme.brightness == Brightness.dark ? 0.18 : 0.12,
           );
     final foreground = read
         ? scheme.onSurface.withValues(alpha: 0.82)
-        : const Color(0xFFF1592A);
+        : colors.brand;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

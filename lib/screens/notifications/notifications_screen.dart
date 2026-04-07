@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:fixitzed_fixer_app/core/app_theme.dart';
 import 'package:fixitzed_fixer_app/models/notification_item.dart';
 import 'package:fixitzed_fixer_app/screens/notifications/widgets/notification_details_sheet.dart';
 import 'package:fixitzed_fixer_app/state/app_sync.dart';
@@ -64,6 +65,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Widget _dismissBackground({required bool leading}) {
+    final colors = Theme.of(context).fx;
     return Align(
       alignment: leading ? Alignment.centerLeft : Alignment.centerRight,
       child: Container(
@@ -71,13 +73,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         height: 56,
         margin: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFD84343),
+          color: colors.danger,
           borderRadius: BorderRadius.circular(18),
-          boxShadow: const [
+          boxShadow: [
             BoxShadow(
-              color: Color(0x33000000),
+              color: colors.shadow,
               blurRadius: 10,
-              offset: Offset(0, 4),
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -203,6 +205,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final timeStr = DateFormat('HH:mm').format(n.createdAt);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final colors = theme.fx;
     final visual = NotificationVisualStyle.resolve(theme, n);
     final title = n.title.trim().isEmpty ? 'Notification' : n.title.trim();
     final preview = n.body.trim().isEmpty
@@ -210,16 +213,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         : n.body.trim();
     final cardColor = n.read
         ? theme.brightness == Brightness.dark
-              ? Color.alphaBlend(
-                  Colors.white.withValues(alpha: 0.04),
-                  scheme.surface,
-                )
-              : const Color(0xFFF3F5F7)
+              ? colors.surfaceRaised
+              : colors.surfaceSubtle
         : Color.alphaBlend(
-            const Color(0xFFF1592A).withValues(
+            colors.brand.withValues(
               alpha: theme.brightness == Brightness.dark ? 0.12 : 0.05,
             ),
-            scheme.surface,
+            colors.surface,
           );
     return Material(
       color: Colors.transparent,
@@ -238,7 +238,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               border: Border.all(
                 color: n.read
                     ? Colors.transparent
-                    : const Color(0xFFF1592A).withValues(alpha: 0.12),
+                    : colors.brand.withValues(alpha: 0.18),
               ),
             ),
             child: Row(
@@ -374,9 +374,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                     await _load();
                                   }
                                 },
-                          child: const Text(
+                          child: Text(
                             'Mark All As Read',
-                            style: TextStyle(color: Color(0xFFF1592A)),
+                            style: TextStyle(color: Theme.of(context).fx.brand),
                           ),
                         ),
                       ],
@@ -413,10 +413,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       padding: const EdgeInsets.only(top: 80),
                       child: Column(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.notifications_none_rounded,
                             size: 64,
-                            color: Colors.black26,
+                            color: Theme.of(context).fx.textMuted,
                           ),
                           const SizedBox(height: 12),
                           Text(

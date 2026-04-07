@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:fixitzed_fixer_app/config.dart';
+import 'package:fixitzed_fixer_app/core/app_theme.dart';
 import 'package:fixitzed_fixer_app/services/api_client.dart';
 import 'package:fixitzed_fixer_app/services/auth_service.dart';
 import 'package:fixitzed_fixer_app/services/fixer_service.dart';
@@ -204,8 +205,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _showChangePhotoSheet() async {
     if (_uploadingPhoto) return;
+    final theme = Theme.of(context);
+    final colors = theme.fx;
     final selection = await showModalBottomSheet<String>(
       context: context,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -218,7 +222,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               width: 38,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.black12,
+                color: colors.border,
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
@@ -373,17 +377,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       useSafeArea: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
+        final theme = Theme.of(ctx);
+        final colors = theme.fx;
         final bottom = MediaQuery.of(ctx).viewInsets.bottom;
         return ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           child: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFFFFF8F3), Colors.white],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
+            decoration: BoxDecoration(gradient: colors.sheetGradient),
             child: Padding(
               padding: EdgeInsets.fromLTRB(20, 16, 20, bottom + 20),
               child: StatefulBuilder(
@@ -397,7 +397,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     hintText: hint,
                     prefixIcon: icon != null ? Icon(icon) : null,
                     filled: true,
-                    fillColor: const Color(0xFFF3F5F7),
+                    fillColor: colors.surfaceSubtle,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide.none,
@@ -416,7 +416,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           width: 46,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: Colors.black12,
+                            color: colors.border,
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
@@ -567,18 +567,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .toString()
         .trim();
     final priorityPoints = _priorityPoints();
+    final theme = Theme.of(context);
+    final colors = theme.fx;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F4F1),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        systemOverlayStyle: const SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.dark,
-          statusBarBrightness: Brightness.light,
-        ),
+        systemOverlayStyle:
+            (theme.brightness == Brightness.dark
+                    ? SystemUiOverlayStyle.light
+                    : SystemUiOverlayStyle.dark)
+                .copyWith(statusBarColor: Colors.transparent),
         iconTheme: IconThemeData(
           color: Theme.of(context).colorScheme.onBackground,
         ),
@@ -723,7 +725,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: Theme.of(context).cardColor,
+                      color: colors.surface,
                       borderRadius: BorderRadius.circular(28),
                       boxShadow: Theme.of(context).brightness == Brightness.dark
                           ? null
@@ -945,15 +947,17 @@ class _ProfileAvatarState extends State<_ProfileAvatar> {
       onTap: () => _showOptions(context, hasImage: validUrl),
       child: CircleAvatar(
         radius: widget.radius,
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).fx.surfaceRaised,
         child: imageChild,
       ),
     );
   }
 
   void _showOptions(BuildContext context, {required bool hasImage}) {
+    final colors = Theme.of(context).fx;
     showModalBottomSheet<void>(
       context: context,
+      backgroundColor: colors.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -966,7 +970,7 @@ class _ProfileAvatarState extends State<_ProfileAvatar> {
               width: 38,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.black12,
+                color: colors.border,
                 borderRadius: BorderRadius.circular(12),
               ),
             ),

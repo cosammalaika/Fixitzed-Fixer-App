@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
+import 'package:fixitzed_fixer_app/core/app_theme.dart';
 import 'package:fixitzed_fixer_app/services/api_client.dart';
 
 class WalletTransactionsScreen extends StatefulWidget {
@@ -72,7 +73,7 @@ class _WalletTransactionsScreenState extends State<WalletTransactionsScreen> {
   Widget build(BuildContext context) {
     final total = ModalRoute.of(context)?.settings.arguments;
     final theme = Theme.of(context);
-    final brand = const Color(0xFFF1592A);
+    final colors = theme.fx;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -136,9 +137,7 @@ class _WalletTransactionsScreenState extends State<WalletTransactionsScreen> {
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(18),
-                  borderSide: BorderSide(
-                    color: Colors.black12.withOpacity(0.05),
-                  ),
+                  borderSide: BorderSide(color: colors.border),
                 ),
               ),
             ),
@@ -150,15 +149,15 @@ class _WalletTransactionsScreenState extends State<WalletTransactionsScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFF1592A), Color(0xFFFF8A4C)],
+                  gradient: LinearGradient(
+                    colors: [colors.brand, colors.brandAccent],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFF1592A).withOpacity(0.22),
+                      color: colors.brand.withOpacity(0.22),
                       blurRadius: 20,
                       offset: const Offset(0, 14),
                     ),
@@ -239,16 +238,14 @@ class _WalletTransactionsScreenState extends State<WalletTransactionsScreen> {
                         final entry = _entries[index];
                         final amount = (entry.amount ?? 0).toDouble();
                         final positive = amount >= 0;
-                        final accent = positive
-                            ? brand
-                            : const Color(0xFFF54832);
+                        final accent = positive ? colors.brand : colors.danger;
                         final title = entry.title ?? entry.serviceName;
                         final statusLabel = positive
                             ? 'Payout received'
                             : 'Adjustment';
                         final gradientColors = positive
-                            ? const [Color(0xFFF1592A), Color(0xFFFF8A4C)]
-                            : const [Color(0xFFF54832), Color(0xFFFF7B6B)];
+                            ? [colors.brand, colors.brandAccent]
+                            : [colors.danger, const Color(0xFFFF7B6B)];
                         final locationLabel = _formatLocation(entry.note);
 
                         return Material(
@@ -259,14 +256,15 @@ class _WalletTransactionsScreenState extends State<WalletTransactionsScreen> {
                             onTap: () => _showEntryDetails(entry),
                             child: Container(
                               decoration: BoxDecoration(
-                                color: theme.cardColor,
+                                color: colors.surface,
                                 borderRadius: BorderRadius.circular(20),
                                 boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
-                                    blurRadius: 16,
-                                    offset: const Offset(0, 10),
-                                  ),
+                                  if (theme.brightness == Brightness.light)
+                                    BoxShadow(
+                                      color: colors.shadow,
+                                      blurRadius: 16,
+                                      offset: const Offset(0, 10),
+                                    ),
                                 ],
                               ),
                               child: Column(
@@ -416,7 +414,7 @@ class _WalletTransactionsScreenState extends State<WalletTransactionsScreen> {
                                               vertical: 12,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: const Color(0xFFF3F5F7),
+                                              color: colors.surfaceSubtle,
                                               borderRadius:
                                                   BorderRadius.circular(16),
                                             ),
@@ -598,9 +596,10 @@ class _TransactionDetailModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final accent = positive ? const Color(0xFFF1592A) : const Color(0xFFF54832);
+    final colors = theme.fx;
+    final accent = positive ? colors.brand : colors.danger;
     final gradient = positive
-        ? const [Color(0xFFF1592A), Color(0xFFFF8A4C)]
+        ? [colors.brand, colors.brandAccent]
         : const [Color(0xFFF54832), Color(0xFFFF7B6B)];
     final statusLabel = positive ? 'Payout received' : 'Adjustment';
     final serviceLabel =
@@ -698,13 +697,13 @@ class _TransactionDetailModal extends StatelessWidget {
         heightFactor: 0.92,
         child: Container(
           decoration: BoxDecoration(
-            color: theme.scaffoldBackgroundColor,
+            color: colors.surface,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            boxShadow: const [
+            boxShadow: [
               BoxShadow(
-                color: Color(0x26000000),
+                color: colors.shadow,
                 blurRadius: 24,
-                offset: Offset(0, 12),
+                offset: const Offset(0, 12),
               ),
             ],
           ),
@@ -717,7 +716,7 @@ class _TransactionDetailModal extends StatelessWidget {
                   width: 44,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.black12,
+                    color: colors.border,
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
@@ -854,7 +853,7 @@ class _TransactionDetailModal extends StatelessWidget {
                               vertical: 14,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF3F5F7),
+                              color: colors.surfaceSubtle,
                               borderRadius: BorderRadius.circular(18),
                             ),
                             child: Row(
@@ -919,7 +918,8 @@ class _Filters extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const brand = Color(0xFFF1592A);
+    final colors = Theme.of(context).fx;
+    final brand = colors.brand;
     final filters = {
       'all': 'All time',
       '7d': 'Last 7 days',
@@ -932,7 +932,7 @@ class _Filters extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.black12.withOpacity(0.06),
+          color: colors.surfaceSubtle,
           borderRadius: BorderRadius.circular(24),
         ),
         child: SingleChildScrollView(
@@ -958,7 +958,7 @@ class _Filters extends StatelessWidget {
                     child: Text(
                       entry.value,
                       style: GoogleFonts.urbanist(
-                        color: active ? Colors.white : const Color(0xFF5B5B5B),
+                        color: active ? Colors.white : colors.textSecondary,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -980,6 +980,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).fx;
     String copy;
     if (searchTerm.isNotEmpty) {
       copy = 'No earnings match "$searchTerm".';
@@ -994,11 +995,7 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.receipt_long_rounded,
-              size: 52,
-              color: Color(0xFFC6CBD1),
-            ),
+            Icon(Icons.receipt_long_rounded, size: 52, color: colors.textMuted),
             const SizedBox(height: 16),
             Text(
               copy,
@@ -1081,16 +1078,17 @@ class _DetailTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).fx;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F5F7),
+        color: colors.surfaceSubtle,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: const Color(0xFF5B5B5B)),
+          Icon(icon, size: 20, color: colors.textSecondary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -1101,7 +1099,7 @@ class _DetailTile extends StatelessWidget {
                   style: GoogleFonts.urbanist(
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
-                    color: const Color(0xFF5B5B5B),
+                    color: colors.textSecondary,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1132,23 +1130,24 @@ class _InfoChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).fx;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F5F7),
+        color: colors.surfaceSubtle,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: const Color(0xFF5B5B5B)),
+          Icon(icon, size: 14, color: colors.textSecondary),
           const SizedBox(width: 6),
           Text(
             label,
             style: GoogleFonts.urbanist(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: const Color(0xFF5B5B5B),
+              color: colors.textSecondary,
             ),
           ),
         ],

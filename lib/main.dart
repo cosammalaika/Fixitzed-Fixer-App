@@ -40,19 +40,17 @@ class FixerApp extends ConsumerWidget {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: AppTheme.mode,
       builder: (context, mode, _) {
+        final lightTheme = AppTheme.light();
+        final darkTheme = AppTheme.dark();
         return MaterialApp(
           navigatorKey: appNavigatorKey,
           title: 'FixItZed Fixer',
           debugShowCheckedModeBanner: false,
-          theme: AppTheme.light().copyWith(
-            textTheme: GoogleFonts.urbanistTextTheme(
-              Theme.of(context).textTheme,
-            ),
+          theme: lightTheme.copyWith(
+            textTheme: GoogleFonts.urbanistTextTheme(lightTheme.textTheme),
           ),
-          darkTheme: AppTheme.dark().copyWith(
-            textTheme: GoogleFonts.urbanistTextTheme(
-              Theme.of(context).textTheme,
-            ),
+          darkTheme: darkTheme.copyWith(
+            textTheme: GoogleFonts.urbanistTextTheme(darkTheme.textTheme),
           ),
           themeMode: mode,
           initialRoute: '/',

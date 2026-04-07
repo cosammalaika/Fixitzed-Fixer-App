@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:fixitzed_fixer_app/core/app_theme.dart';
 import 'package:fixitzed_fixer_app/services/api_client.dart';
 import 'package:fixitzed_fixer_app/services/loyalty_service.dart';
 import 'package:fixitzed_fixer_app/services/subscription_service.dart';
@@ -225,7 +226,9 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final brand = const Color(0xFFF1592A);
+    final theme = Theme.of(context);
+    final colors = theme.fx;
+    final brand = colors.brand;
     return SafeArea(
       top: false,
       child: Padding(
@@ -249,7 +252,7 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
                       width: 44,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
+                        color: colors.border,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -265,7 +268,7 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
                   const SizedBox(height: 4),
                   Text(
                     'K${_priceKwacha.toStringAsFixed(2)} · ${widget.plan['coins']} coins · ${widget.plan['valid_days']} days',
-                    style: GoogleFonts.urbanist(color: Colors.black54),
+                    style: GoogleFonts.urbanist(color: colors.textSecondary),
                   ),
                   const SizedBox(height: 16),
                   _loyaltySection(brand),
@@ -321,6 +324,7 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
   }
 
   Widget _manualInstructionsCard(Color brand) {
+    final colors = Theme.of(context).fx;
     final method = _selectedMethod;
     final isManual = method?['is_manual'] == true;
     final raw = method?['instructions']?.toString().trim();
@@ -341,7 +345,7 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF7F0),
+        color: colors.surfaceTint,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: brand.withOpacity(0.15)),
       ),
@@ -374,7 +378,10 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
           const SizedBox(height: 12),
           Text(
             'After you submit the request we will confirm the payment and credit your coins.',
-            style: GoogleFonts.urbanist(color: Colors.black54, fontSize: 12.5),
+            style: GoogleFonts.urbanist(
+              color: colors.textSecondary,
+              fontSize: 12.5,
+            ),
           ),
         ],
       ),
@@ -409,6 +416,7 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
   }
 
   Widget _instructionBullet(String text) {
+    final colors = Theme.of(context).fx;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -418,7 +426,7 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
           Expanded(
             child: Text(
               text,
-              style: GoogleFonts.urbanist(color: Colors.black87),
+              style: GoogleFonts.urbanist(color: colors.textPrimary),
             ),
           ),
         ],
@@ -427,7 +435,8 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
   }
 
   Future<void> _showManualInstructionsDialog(Map<String, dynamic> data) async {
-    final brand = const Color(0xFFF1592A);
+    final colors = Theme.of(context).fx;
+    final brand = colors.brand;
     final instructions = data['payment_instructions']?.toString().trim() ?? '';
     final reference = data['payment_reference']?.toString();
     final title = data['payment_title']?.toString() ?? 'Payment Instructions';
@@ -491,13 +500,13 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
                 else
                   Text(
                     'Follow the instructions shared by the team to complete your payment.',
-                    style: GoogleFonts.urbanist(color: Colors.black87),
+                    style: GoogleFonts.urbanist(color: colors.textPrimary),
                   ),
                 const SizedBox(height: 12),
                 Text(
                   'We will review your payment and credit the coins once approved.',
                   style: GoogleFonts.urbanist(
-                    color: Colors.black54,
+                    color: colors.textSecondary,
                     fontSize: 12.5,
                   ),
                 ),
@@ -568,16 +577,20 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
   }
 
   Widget _loyaltySection(Color brand) {
+    final colors = Theme.of(context).fx;
     if (_loyaltyBalance <= 0) {
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F5F7),
+          color: colors.surfaceSubtle,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Text(
           'Earn loyalty points when you pay for plans or complete jobs. Redeem them to reduce future purchases!',
-          style: GoogleFonts.urbanist(color: Colors.black54, fontSize: 13),
+          style: GoogleFonts.urbanist(
+            color: colors.textSecondary,
+            fontSize: 13,
+          ),
         ),
       );
     }
@@ -593,7 +606,7 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F5F7),
+        color: colors.surfaceSubtle,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
@@ -613,7 +626,7 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
                     Text(
                       '≈ K$balanceValue',
                       style: GoogleFonts.urbanist(
-                        color: Colors.black54,
+                        color: colors.textSecondary,
                         fontSize: 12,
                       ),
                     ),
@@ -640,7 +653,7 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
               child: Text(
                 'Earn ${math.max(0, _loyaltyThreshold - _loyaltyBalance)} more points to unlock redemptions.',
                 style: GoogleFonts.urbanist(
-                  color: Colors.black54,
+                  color: colors.textSecondary,
                   fontSize: 12,
                 ),
               ),
@@ -651,7 +664,7 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
               child: Text(
                 'Not enough points to reduce this purchase yet.',
                 style: GoogleFonts.urbanist(
-                  color: Colors.black54,
+                  color: colors.textSecondary,
                   fontSize: 12,
                 ),
               ),
@@ -696,6 +709,7 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
   }
 
   Widget _methodTile(Map<String, dynamic> method, Color brand) {
+    final colors = Theme.of(context).fx;
     final code = (method['code'] ?? 'cash').toString();
     final displayName = (method['title'] ?? method['name'] ?? code).toString();
     final selected = _method == code;
@@ -709,7 +723,7 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
         margin: const EdgeInsets.symmetric(vertical: 6),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: colors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: selected ? brand : Colors.transparent,
@@ -732,7 +746,7 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
                     Text(
                       'Manual review required',
                       style: GoogleFonts.urbanist(
-                        color: Colors.black54,
+                        color: colors.textSecondary,
                         fontSize: 12,
                       ),
                     ),
@@ -741,7 +755,7 @@ class _SubscriptionCheckoutSheetState extends State<SubscriptionCheckoutSheet> {
             ),
             Icon(
               selected ? Icons.radio_button_checked : Icons.radio_button_off,
-              color: selected ? brand : Colors.black26,
+              color: selected ? brand : colors.textMuted,
             ),
           ],
         ),

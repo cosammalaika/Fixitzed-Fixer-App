@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
+import 'package:fixitzed_fixer_app/core/app_theme.dart';
 import 'package:fixitzed_fixer_app/services/auth_service.dart';
 import 'package:fixitzed_fixer_app/services/api_client.dart';
 import 'package:fixitzed_fixer_app/screens/auth/forgot_password_sheet.dart';
@@ -172,7 +173,8 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> _showAlert(String title, String message) async {
-    const brand = Color(0xFFF1592A);
+    final colors = Theme.of(context).fx;
+    final brand = colors.brand;
     await showDialog(
       context: context,
       barrierDismissible: true,
@@ -190,7 +192,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   color: brand.withOpacity(0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.error_outline_rounded,
                   color: brand,
                   size: 32,
@@ -209,7 +211,7 @@ class _SignInScreenState extends State<SignInScreen> {
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.urbanist(color: Colors.black87),
+                style: GoogleFonts.urbanist(color: colors.textSecondary),
               ),
               const SizedBox(height: 20),
               SizedBox(
@@ -729,7 +731,7 @@ class _SignInScreenState extends State<SignInScreen> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).fx.surface,
       builder: (ctx) =>
           ForgotPasswordSheet(initialIdentifier: seed.isEmpty ? null : seed),
     );
@@ -743,7 +745,8 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Future<void> _showBecomeFixerInfo() async {
-    const brand = Color(0xFFF1592A);
+    final colors = Theme.of(context).fx;
+    final brand = colors.brand;
 
     await showDialog(
       context: context,
@@ -765,11 +768,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       color: brand.withOpacity(0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.handyman_rounded,
-                      color: brand,
-                      size: 28,
-                    ),
+                    child: Icon(Icons.handyman_rounded, color: brand, size: 28),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -778,7 +777,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       style: GoogleFonts.urbanist(
                         fontWeight: FontWeight.w800,
                         fontSize: 18,
-                        color: Colors.black87,
+                        color: colors.textPrimary,
                       ),
                     ),
                   ),
@@ -788,7 +787,7 @@ class _SignInScreenState extends State<SignInScreen> {
               Text(
                 'The Fixer app is only for professionals who have been approved. To apply:',
                 style: GoogleFonts.urbanist(
-                  color: Colors.black87,
+                  color: colors.textSecondary,
                   height: 1.45,
                 ),
               ),
@@ -861,7 +860,10 @@ class _SignInScreenState extends State<SignInScreen> {
           Expanded(
             child: Text(
               text,
-              style: GoogleFonts.urbanist(color: Colors.black87, height: 1.45),
+              style: GoogleFonts.urbanist(
+                color: Theme.of(context).fx.textSecondary,
+                height: 1.45,
+              ),
             ),
           ),
         ],

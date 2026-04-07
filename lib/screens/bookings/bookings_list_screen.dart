@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:fixitzed_fixer_app/core/app_theme.dart';
 import 'package:fixitzed_fixer_app/models/service_request.dart';
 import 'package:fixitzed_fixer_app/state/bookings_controller.dart';
 import 'package:fixitzed_fixer_app/state/fixer_profile_controller.dart';
@@ -35,6 +36,7 @@ class _BookingsListScreenState extends State<BookingsListScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colors = theme.fx;
     return Consumer(
       builder: (context, ref, _) {
         final bookingsAsync = ref.watch(fixerBookingsProvider);
@@ -64,13 +66,13 @@ class _BookingsListScreenState extends State<BookingsListScreen>
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: Colors.black12.withOpacity(0.06),
+                    color: colors.surfaceSubtle,
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: TabBar(
                     controller: _tab,
                     indicator: BoxDecoration(
-                      color: const Color(0xFFF1592A),
+                      color: colors.brand,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     indicatorSize: TabBarIndicatorSize.tab,
@@ -118,6 +120,7 @@ class _BookingsListScreenState extends State<BookingsListScreen>
     FixerBookingsState state, {
     required bool isRefreshing,
   }) {
+    final colors = Theme.of(context).fx;
     return Stack(
       children: [
         Column(
@@ -126,15 +129,11 @@ class _BookingsListScreenState extends State<BookingsListScreen>
               margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFF1592A), Color(0xFFFFA26C)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                gradient: colors.brandGradient,
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFF1592A).withOpacity(0.18),
+                    color: colors.brand.withOpacity(0.18),
                     blurRadius: 18,
                     offset: const Offset(0, 12),
                   ),
@@ -237,19 +236,20 @@ class _BookingsListScreenState extends State<BookingsListScreen>
             behavior: HitTestBehavior.opaque,
             onTap: () => _openBookingDetails(context, ref, r),
             child: Material(
-              color: Theme.of(context).cardColor,
+              color: Theme.of(context).fx.surface,
               borderRadius: BorderRadius.circular(16),
               child: Ink(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    ),
+                    if (Theme.of(context).brightness == Brightness.light)
+                      BoxShadow(
+                        color: Theme.of(context).fx.shadow,
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
                   ],
-                  border: Border.all(color: const Color(0x1AF1592A)),
+                  border: Border.all(color: Theme.of(context).fx.border),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -257,13 +257,13 @@ class _BookingsListScreenState extends State<BookingsListScreen>
                     children: [
                       Container(
                         padding: const EdgeInsets.all(12),
-                        decoration: const BoxDecoration(
-                          color: Color(0x1AF1592A),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).fx.surfaceTint,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.handyman_rounded,
-                          color: Color(0xFFF1592A),
+                          color: Theme.of(context).fx.brand,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -339,10 +339,7 @@ class _BookingsListScreenState extends State<BookingsListScreen>
 
     final result = await Navigator.of(context).pushNamed(
       '/booking_detail',
-      arguments: {
-        'id': id,
-        'request': booking.toJson(),
-      },
+      arguments: {'id': id, 'request': booking.toJson()},
     );
 
     if (!mounted) return;
@@ -353,32 +350,33 @@ class _BookingsListScreenState extends State<BookingsListScreen>
   }
 
   Widget _statusChip(String status) {
+    final colors = Theme.of(context).fx;
     Color bg;
     Color fg;
     switch (status) {
       case 'pending':
-        bg = const Color(0xFFF6EEEA);
-        fg = const Color(0xFFF1592A);
+        bg = colors.surfaceTint;
+        fg = colors.brand;
         break;
       case 'accepted':
-        bg = Colors.green.withOpacity(0.12);
-        fg = Colors.green;
+        bg = colors.successContainer;
+        fg = colors.success;
         break;
       case 'awaiting_payment':
-        bg = const Color(0x1AF1592A);
-        fg = const Color(0xFFF1592A);
+        bg = colors.surfaceTint;
+        fg = colors.brand;
         break;
       case 'completed':
-        bg = Colors.blue.withOpacity(0.12);
-        fg = Colors.blue;
+        bg = colors.infoContainer;
+        fg = colors.info;
         break;
       case 'declined':
-        bg = Colors.red.withOpacity(0.12);
-        fg = Colors.red.shade700;
+        bg = colors.dangerContainer;
+        fg = colors.danger;
         break;
       default:
-        bg = Colors.grey.withOpacity(0.15);
-        fg = Colors.grey.shade700;
+        bg = colors.surfaceSubtle;
+        fg = colors.textSecondary;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

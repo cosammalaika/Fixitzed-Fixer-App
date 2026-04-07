@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:fixitzed_fixer_app/core/app_theme.dart';
 import 'package:fixitzed_fixer_app/models/service_catalog.dart';
 import 'package:fixitzed_fixer_app/state/catalog_provider.dart';
 import 'package:fixitzed_fixer_app/state/fixer_profile_controller.dart';
@@ -172,7 +173,7 @@ class _ManageServicesScreenState extends ConsumerState<ManageServicesScreen> {
         child: ElevatedButton(
           onPressed: _saving || _selected.isEmpty ? null : _save,
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFF1592A),
+            backgroundColor: Theme.of(context).fx.brand,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 16),
             shape: RoundedRectangleBorder(
@@ -322,18 +323,15 @@ class _HeaderBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).fx;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF1592A), Color(0xFFFFA26C)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: colors.brandGradient,
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFF1592A).withOpacity(0.18),
+            color: colors.brand.withOpacity(0.18),
             blurRadius: 20,
             offset: const Offset(0, 14),
           ),
@@ -400,8 +398,9 @@ class _CategoryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const brand = Color(0xFFF1592A);
     final theme = Theme.of(context);
+    final colors = theme.fx;
+    final brand = colors.brand;
     final grouped = <String, List<ServiceCatalogItem>>{};
     for (final item in section.items) {
       final label = (item.subcategoryName ?? 'Other services').trim();
@@ -432,7 +431,9 @@ class _CategoryCard extends StatelessWidget {
               ]
             : [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: theme.brightness == Brightness.dark
+                      ? Colors.transparent
+                      : colors.shadow,
                   blurRadius: 12,
                   offset: const Offset(0, 8),
                 ),
@@ -548,8 +549,11 @@ class _CategoryCard extends StatelessWidget {
                 )
               : null,
           secondary: selected
-              ? const Icon(Icons.check_circle, color: Color(0xFFF1592A))
-              : const Icon(Icons.radio_button_unchecked, color: Colors.black26),
+              ? Icon(Icons.check_circle, color: Theme.of(context).fx.brand)
+              : Icon(
+                  Icons.radio_button_unchecked,
+                  color: Theme.of(context).fx.textMuted,
+                ),
           controlAffinity: ListTileControlAffinity.leading,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20),
         ),
@@ -589,23 +593,25 @@ class _EmptyCatalog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).fx;
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: colors.surface,
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 6),
-          ),
+          if (Theme.of(context).brightness == Brightness.light)
+            BoxShadow(
+              color: colors.shadow,
+              blurRadius: 10,
+              offset: const Offset(0, 6),
+            ),
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.handyman_outlined, size: 48, color: Colors.black26),
+          Icon(Icons.handyman_outlined, size: 48, color: colors.textMuted),
           const SizedBox(height: 12),
           Text(
             'No services found',
@@ -614,16 +620,16 @@ class _EmptyCatalog extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'Try refreshing to load the available catalog.',
-            style: GoogleFonts.urbanist(color: Colors.black54),
+            style: GoogleFonts.urbanist(color: colors.textSecondary),
           ),
           const SizedBox(height: 18),
           TextButton.icon(
             onPressed: onRetry,
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFFF1592A)),
+            icon: Icon(Icons.refresh_rounded, color: colors.brand),
             label: Text(
               'Reload catalog',
               style: GoogleFonts.urbanist(
-                color: const Color(0xFFF1592A),
+                color: colors.brand,
                 fontWeight: FontWeight.w600,
               ),
             ),

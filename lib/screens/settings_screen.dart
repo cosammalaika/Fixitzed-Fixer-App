@@ -52,13 +52,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _heroCard(BuildContext context) {
-    const brand = Color(0xFFF1592A);
-    const accent = Color(0xFFFF8A5C);
+    final colors = Theme.of(context).fx;
+    final brand = colors.brand;
+    final accent = colors.brandAccent;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final gradient = LinearGradient(
       colors: isDark
-          ? [brand.withOpacity(0.95), accent.withOpacity(0.85)]
-          : const [brand, accent],
+          ? [brand.withValues(alpha: 0.95), accent.withValues(alpha: 0.85)]
+          : [brand, accent],
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     );
@@ -66,7 +67,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ? null
         : [
             BoxShadow(
-              color: brand.withOpacity(0.18),
+              color: colors.shadow,
               blurRadius: 20,
               offset: const Offset(0, 12),
             ),
@@ -85,7 +86,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.22),
+              color: Colors.white.withValues(alpha: 0.22),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.settings_rounded, color: Colors.white),
@@ -124,7 +125,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required List<Widget> children,
   }) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final colors = theme.fx;
     final isDark = theme.brightness == Brightness.dark;
 
     return Padding(
@@ -139,7 +140,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               style: GoogleFonts.urbanist(
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
-                color: scheme.onSurface.withOpacity(isDark ? 0.65 : 0.55),
+                color: colors.textMuted,
                 letterSpacing: 0.2,
               ),
             ),
@@ -147,13 +148,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 10),
           Container(
             decoration: BoxDecoration(
-              color: scheme.surface,
+              color: colors.surface,
               borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: colors.border),
               boxShadow: isDark
                   ? null
                   : [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: colors.shadow,
                         blurRadius: 18,
                         offset: const Offset(0, 12),
                       ),
@@ -165,7 +167,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (i > 0)
                     Divider(
                       height: 1,
-                      color: scheme.outline.withOpacity(isDark ? 0.14 : 0.08),
+                      color: colors.border.withValues(
+                        alpha: isDark ? 0.7 : 0.8,
+                      ),
                     ),
                   children[i],
                 ],
@@ -185,7 +189,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _languageTile(BuildContext context, Color textColor, Color hintColor) {
-    final scheme = Theme.of(context).colorScheme;
     return InkWell(
       borderRadius: BorderRadius.circular(18),
       onTap: () async {
@@ -195,7 +198,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           backgroundColor: Colors.transparent,
           builder: (ctx) {
             final theme = Theme.of(ctx);
-            final sc = theme.colorScheme;
+            final sheetColors = theme.fx;
             final isDark = theme.brightness == Brightness.dark;
             return ClipRRect(
               borderRadius: const BorderRadius.vertical(
@@ -203,12 +206,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               child: Container(
                 decoration: BoxDecoration(
-                  color: sc.surface,
+                  color: sheetColors.surface,
+                  border: Border(top: BorderSide(color: sheetColors.border)),
                   boxShadow: isDark
                       ? null
                       : [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: sheetColors.shadow,
                             blurRadius: 20,
                             offset: const Offset(0, -6),
                           ),
@@ -222,7 +226,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       width: 44,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: sc.outlineVariant.withOpacity(0.5),
+                        color: sheetColors.border,
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -239,7 +243,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                         trailing: lang == language
-                            ? Icon(Icons.check_rounded, color: sc.primary)
+                            ? Icon(
+                                Icons.check_rounded,
+                                color: sheetColors.brand,
+                              )
                             : null,
                         onTap: () => Navigator.pop(ctx, lang),
                       ),
@@ -278,7 +285,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ],
             ),
-            Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Theme.of(context).fx.textMuted,
+            ),
           ],
         ),
       ),
@@ -326,10 +336,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final textColor = scheme.onSurface;
-    final hintColor = scheme.onSurface.withOpacity(
-      theme.brightness == Brightness.dark ? 0.6 : 0.55,
-    );
+    final colors = theme.fx;
+    final textColor = colors.textPrimary;
+    final hintColor = colors.textMuted;
 
     return Scaffold(
       appBar: AppBar(

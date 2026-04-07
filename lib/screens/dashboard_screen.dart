@@ -1,4 +1,5 @@
 import 'package:fixitzed_fixer_app/data/models/dashboard_snapshot.dart';
+import 'package:fixitzed_fixer_app/core/app_theme.dart';
 import 'package:fixitzed_fixer_app/models/service_request.dart';
 import 'package:fixitzed_fixer_app/services/fixer_service.dart';
 import 'package:fixitzed_fixer_app/state/bookings_controller.dart';
@@ -53,9 +54,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   Future<void> _refreshDashboard() async {
     await Future.wait<void>([
-      ref.read(fixerDashboardControllerProvider.notifier).refresh(
-        forceRefresh: true,
-      ),
+      ref
+          .read(fixerDashboardControllerProvider.notifier)
+          .refresh(forceRefresh: true),
       ref.read(fixerBookingsProvider.notifier).refresh(),
     ]);
   }
@@ -185,6 +186,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).fx;
     final connectivity = ref.watch(connectivityProvider);
     final isOnline = connectivity.isOnline;
     if (_lastOnline == null) {
@@ -283,12 +285,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3F5F7),
+                    color: colors.surfaceSubtle,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
                     'No requests yet. Once a customer books you, it will appear here.',
-                    style: GoogleFonts.urbanist(color: Colors.black54),
+                    style: GoogleFonts.urbanist(color: colors.textSecondary),
                     textAlign: TextAlign.center,
                   ),
                 )
@@ -301,7 +303,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                         child: _RequestCard(
                           request: r,
                           onTap: () {
-                            assert(r.id > 0, 'Dashboard booking request id is missing');
+                            assert(
+                              r.id > 0,
+                              'Dashboard booking request id is missing',
+                            );
                             final payload = r.toJson();
                             if (kDebugMode) {
                               debugPrint(
@@ -311,10 +316,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                             Navigator.pushNamed(
                               context,
                               '/booking_detail',
-                              arguments: {
-                                'id': r.id,
-                                'request': payload,
-                              },
+                              arguments: {'id': r.id, 'request': payload},
                             );
                           },
                         ),
@@ -339,17 +341,18 @@ class _StatRow extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).fx;
     Widget box(IconData icon, String label, int value) => Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F5F7),
+          color: colors.surfaceSubtle,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
           children: [
-            Icon(icon, color: Color(0xFFF1592A)),
+            Icon(icon, color: colors.brand),
             const SizedBox(height: 6),
             _AnimatedValueText(
               text: '$value',
@@ -379,22 +382,23 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).fx;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF4ED),
+        color: colors.warningContainer,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0x26F1592A)),
+        border: Border.all(color: colors.warning.withOpacity(0.24)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.wifi_off_rounded, color: Color(0xFFF1592A)),
+          Icon(Icons.wifi_off_rounded, color: colors.warning),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               message,
               style: GoogleFonts.urbanist(
-                color: const Color(0xFF5F341F),
+                color: colors.textPrimary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -421,7 +425,8 @@ class _HeaderCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const brand = Color(0xFFF1592A);
+    final colors = Theme.of(context).fx;
+    final brand = colors.brand;
     final currency = NumberFormat.currency(symbol: 'K', decimalDigits: 2);
     final lastUpdatedAt = snapshot.serverUpdatedAt ?? snapshot.fetchedAt;
     return Container(
@@ -518,7 +523,7 @@ class _HeaderCard extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: colors.surfaceRaised,
               borderRadius: BorderRadius.circular(18),
             ),
             child: Row(
@@ -526,11 +531,11 @@ class _HeaderCard extends StatelessWidget {
                 Container(
                   width: 42,
                   height: 42,
-                  decoration: const BoxDecoration(
-                    color: Color(0x1AF1592A),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceTint,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.electric_bolt_rounded, color: brand),
+                  child: Icon(Icons.electric_bolt_rounded, color: brand),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -548,7 +553,7 @@ class _HeaderCard extends StatelessWidget {
                             ? 'Keep accepting requests to earn more.'
                             : 'Top up to continue accepting jobs.',
                         style: GoogleFonts.urbanist(
-                          color: Colors.black54,
+                          color: colors.textSecondary,
                           fontSize: 12,
                         ),
                       ),
@@ -671,8 +676,8 @@ class _SyncBadge extends StatelessWidget {
     final label = isOffline
         ? 'Offline • showing saved data'
         : isSyncing
-            ? 'Syncing...'
-            : 'Updated ${_relative(lastUpdatedAt)}';
+        ? 'Syncing...'
+        : 'Updated ${_relative(lastUpdatedAt)}';
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -685,8 +690,8 @@ class _SyncBadge extends StatelessWidget {
             color: isOffline
                 ? Colors.white60
                 : isSyncing
-                    ? const Color(0xFFFFE6B3)
-                    : const Color(0xFFC3FFD8),
+                ? const Color(0xFFFFE6B3)
+                : const Color(0xFFC3FFD8),
             shape: BoxShape.circle,
           ),
         ),
@@ -716,10 +721,7 @@ class _SyncBadge extends StatelessWidget {
 }
 
 class _AnimatedValueText extends StatelessWidget {
-  const _AnimatedValueText({
-    required this.text,
-    required this.style,
-  });
+  const _AnimatedValueText({required this.text, required this.style});
 
   final String text;
   final TextStyle style;
@@ -740,11 +742,7 @@ class _AnimatedValueText extends StatelessWidget {
           child: SlideTransition(position: offset, child: child),
         );
       },
-      child: Text(
-        text,
-        key: ValueKey(text),
-        style: style,
-      ),
+      child: Text(text, key: ValueKey(text), style: style),
     );
   }
 }
@@ -800,7 +798,7 @@ class _DashboardAvatarState extends State<_DashboardAvatar> {
 
     return CircleAvatar(
       radius: widget.radius,
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).fx.surface,
       child: child,
     );
   }
@@ -820,9 +818,10 @@ class _ActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const brand = Color(0xFFF1592A);
+    final colors = Theme.of(context).fx;
+    final brand = colors.brand;
     return Material(
-      color: const Color(0xFFF8EEE8),
+      color: colors.surfaceTint,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
@@ -834,8 +833,12 @@ class _ActionCard extends StatelessWidget {
               Container(
                 width: 48,
                 height: 48,
-                decoration: const BoxDecoration(
-                  color: Color(0x1AF1592A),
+                decoration: BoxDecoration(
+                  color: brand.withOpacity(
+                    Theme.of(context).brightness == Brightness.dark
+                        ? 0.18
+                        : 0.10,
+                  ),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: brand),
@@ -853,14 +856,14 @@ class _ActionCard extends StatelessWidget {
                     Text(
                       subtitle,
                       style: GoogleFonts.urbanist(
-                        color: Colors.black54,
+                        color: colors.textSecondary,
                         fontSize: 12,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, color: Colors.black54),
+              Icon(Icons.chevron_right_rounded, color: colors.textMuted),
             ],
           ),
         ),
@@ -876,6 +879,8 @@ class _RequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.fx;
     final status = request.status;
     final scheduled = request.scheduledAt != null
         ? DateFormat('d MMM, HH:mm').format(request.scheduledAt!.toLocal())
@@ -885,9 +890,9 @@ class _RequestCard extends StatelessWidget {
         : 'No location provided';
 
     return Material(
-      color: Colors.white,
+      color: colors.surface,
       elevation: 1,
-      shadowColor: Colors.black.withOpacity(0.05),
+      shadowColor: colors.shadow,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
@@ -928,16 +933,12 @@ class _RequestCard extends StatelessWidget {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  const Icon(
-                    Icons.person_outline,
-                    size: 16,
-                    color: Colors.black45,
-                  ),
+                  Icon(Icons.person_outline, size: 16, color: colors.textMuted),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       request.customer.name,
-                      style: GoogleFonts.urbanist(color: Colors.black87),
+                      style: GoogleFonts.urbanist(color: colors.textPrimary),
                     ),
                   ),
                 ],
@@ -945,17 +946,17 @@ class _RequestCard extends StatelessWidget {
               const SizedBox(height: 6),
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.schedule_rounded,
                     size: 16,
-                    color: Colors.black45,
+                    color: colors.textMuted,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       scheduled,
                       style: GoogleFonts.urbanist(
-                        color: Colors.black54,
+                        color: colors.textSecondary,
                         fontSize: 12,
                       ),
                     ),
@@ -965,17 +966,13 @@ class _RequestCard extends StatelessWidget {
               const SizedBox(height: 6),
               Row(
                 children: [
-                  const Icon(
-                    Icons.place_outlined,
-                    size: 16,
-                    color: Colors.black45,
-                  ),
+                  Icon(Icons.place_outlined, size: 16, color: colors.textMuted),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       location,
                       style: GoogleFonts.urbanist(
-                        color: Colors.black54,
+                        color: colors.textSecondary,
                         fontSize: 12,
                       ),
                     ),
@@ -1053,8 +1050,10 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
 
   @override
   Widget build(BuildContext context) {
-    const brand = Color(0xFFF1592A);
-    const accent = Color(0xFFFFA26C);
+    final theme = Theme.of(context);
+    final colors = theme.fx;
+    final brand = colors.brand;
+    final accent = colors.brandAccent;
     final scheduled = widget.request.scheduledAt != null
         ? DateFormat(
             'EEE, d MMM • HH:mm',
@@ -1067,13 +1066,7 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
       child: ClipRRect(
         borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         child: DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFFFFF8F3), Colors.white],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
+          decoration: BoxDecoration(gradient: colors.sheetGradient),
           child: SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(20, 16, 20, bottomInset + 24),
             child: Column(
@@ -1085,7 +1078,7 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
                     width: 46,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.black12,
+                      color: colors.border,
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
@@ -1094,7 +1087,7 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
                 Container(
                   padding: const EdgeInsets.all(22),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       colors: [brand, accent],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -1190,14 +1183,15 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
                 const SizedBox(height: 22),
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: colors.surface,
                     borderRadius: BorderRadius.circular(22),
                     boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 18,
-                        offset: const Offset(0, 10),
-                      ),
+                      if (theme.brightness == Brightness.light)
+                        BoxShadow(
+                          color: colors.shadow,
+                          blurRadius: 18,
+                          offset: const Offset(0, 10),
+                        ),
                     ],
                   ),
                   padding: const EdgeInsets.all(18),
@@ -1242,18 +1236,18 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
                     vertical: 14,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF2EA),
+                    color: colors.surfaceTint,
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.all(10),
-                        decoration: const BoxDecoration(
-                          color: Colors.white,
+                        decoration: BoxDecoration(
+                          color: colors.surfaceRaised,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.monetization_on_outlined,
                           color: brand,
                         ),
@@ -1265,7 +1259,7 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
                               ? 'Accepting will use your active plan.'
                               : 'You need an active subscription or coins to take this job.',
                           style: GoogleFonts.urbanist(
-                            color: Colors.black87,
+                            color: colors.textPrimary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -1278,7 +1272,7 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
                   Text(
                     'Boost your availability by purchasing a plan – it unlocks new bookings instantly.',
                     style: GoogleFonts.urbanist(
-                      color: Colors.black54,
+                      color: colors.textSecondary,
                       fontSize: 13,
                     ),
                   ),
@@ -1296,8 +1290,11 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
                                 if (!mounted) return;
                                 final ok = result['success'] == true;
                                 final statusCode = result['statusCode'] as int?;
-                                final msg = (result['message'] as String?)?.trim();
-                                if (!ok && statusCode != 409 && statusCode != 410) {
+                                final msg = (result['message'] as String?)
+                                    ?.trim();
+                                if (!ok &&
+                                    statusCode != 409 &&
+                                    statusCode != 410) {
                                   setState(() => _processing = false);
                                   AppSnack.show(
                                     context,
@@ -1311,7 +1308,8 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
                                 if (!ok) {
                                   AppSnack.show(
                                     context,
-                                    message: 'This request is no longer available.',
+                                    message:
+                                        'This request is no longer available.',
                                     success: false,
                                   );
                                 } else {
@@ -1323,7 +1321,9 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
                                     success: true,
                                   );
                                 }
-                                Navigator.of(context).pop(_RequestSheetResult.declined);
+                                Navigator.of(
+                                  context,
+                                ).pop(_RequestSheetResult.declined);
                               },
                         style: OutlinedButton.styleFrom(
                           shape: RoundedRectangleBorder(
@@ -1350,12 +1350,14 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
                                 if (!mounted) return;
                                 final ok = result['success'] == true;
                                 final statusCode = result['statusCode'] as int?;
-                                final msg = (result['message'] as String?)?.trim();
+                                final msg = (result['message'] as String?)
+                                    ?.trim();
                                 if (!ok) {
                                   setState(() => _processing = false);
                                   AppSnack.show(
                                     context,
-                                    message: statusCode == 409 || statusCode == 410
+                                    message:
+                                        statusCode == 409 || statusCode == 410
                                         ? 'This request is no longer available.'
                                         : (msg != null && msg.isNotEmpty
                                               ? msg
@@ -1363,7 +1365,9 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
                                     success: false,
                                   );
                                   if (statusCode == 409 || statusCode == 410) {
-                                    Navigator.of(context).pop(_RequestSheetResult.declined);
+                                    Navigator.of(
+                                      context,
+                                    ).pop(_RequestSheetResult.declined);
                                   }
                                 } else {
                                   Navigator.of(
@@ -1477,14 +1481,16 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
     required String value,
     Widget? trailing,
   }) {
-    const brand = Color(0xFFF1592A);
+    final theme = Theme.of(context);
+    final colors = theme.fx;
+    final brand = colors.brand;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           padding: const EdgeInsets.all(12),
-          decoration: const BoxDecoration(
-            color: Color(0x1AF1592A),
+          decoration: BoxDecoration(
+            color: colors.surfaceTint,
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: brand),
@@ -1497,7 +1503,7 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
               Text(
                 label,
                 style: GoogleFonts.urbanist(
-                  color: Colors.black54,
+                  color: colors.textSecondary,
                   fontSize: 12,
                 ),
               ),
@@ -1506,7 +1512,7 @@ class _NewRequestSheetState extends State<_NewRequestSheet> {
                 value,
                 style: GoogleFonts.urbanist(
                   fontWeight: FontWeight.w700,
-                  color: Colors.black87,
+                  color: colors.textPrimary,
                 ),
               ),
             ],
