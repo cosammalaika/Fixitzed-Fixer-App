@@ -82,11 +82,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final points = _asInt(
         fixerData['priority_points'] ?? fixerData['priorityPoints'],
       );
+      final location =
+          fixerData['location']?.toString().trim().isNotEmpty == true
+          ? fixerData['location'].toString().trim()
+          : null;
       nextUser = {
         ...nextUser,
         'fixer': fixerData,
         'fixer_profile': fixerData,
         'fixerProfile': fixerData,
+        if (location != null) 'location': location,
+        if (location != null &&
+            (nextUser['address'] == null ||
+                '${nextUser['address']}'.trim().isEmpty))
+          'address': location,
+        if (fixerData['availability'] != null)
+          'availability': fixerData['availability'],
         if (points != null) 'priority_points': points,
         if (points != null) 'priorityPoints': points,
       };

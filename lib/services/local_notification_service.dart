@@ -134,6 +134,7 @@ class LocalNotificationService {
   }
 
   Future<void> notifyJobUpdate({
+    int? requestId,
     required String bookingCode,
     required String status,
     DateTime? scheduledAt,
@@ -146,7 +147,9 @@ class LocalNotificationService {
     await showInstant(
       title: 'Booking update',
       body: buffer.toString(),
-      payload: 'booking_update',
+      payload: requestId != null && requestId > 0
+          ? 'booking_detail:$requestId'
+          : 'booking_update',
     );
   }
 
@@ -174,6 +177,11 @@ class LocalNotificationService {
       if (id != null) {
         navigator.pushNamed('/booking_detail', arguments: {'id': id});
       }
+      return;
+    }
+
+    if (payload == 'booking_update') {
+      navigator.pushNamed('/bookings');
       return;
     }
 

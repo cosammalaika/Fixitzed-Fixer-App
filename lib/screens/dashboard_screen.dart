@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:fixitzed_fixer_app/data/models/dashboard_snapshot.dart';
 import 'package:fixitzed_fixer_app/core/app_theme.dart';
 import 'package:fixitzed_fixer_app/models/service_request.dart';
 import 'package:fixitzed_fixer_app/services/fixer_service.dart';
 import 'package:fixitzed_fixer_app/state/bookings_controller.dart';
 import 'package:fixitzed_fixer_app/state/dashboard_controller.dart';
+import 'package:fixitzed_fixer_app/state/service_providers.dart';
 import 'package:fixitzed_fixer_app/ui/snack.dart';
 import 'package:fixitzed_fixer_app/widgets/offline_placeholder.dart';
 import 'package:fixitzed_fixer_app/common/connectivity/connectivity_controller.dart';
@@ -28,19 +31,23 @@ enum _RequestSheetResult { accepted, declined, purchase }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen>
     with WidgetsBindingObserver {
-  final _fixer = FixerService();
+  late final FixerService _fixer;
   DateTime? _lastRefreshTriggerAt;
   bool? _lastOnline;
+  Timer? _pollTimer;
+  bool _appActive = true;
 
   @override
   void initState() {
     super.initState();
+    _fixer = ref.read(fixerServiceProvider);
     WidgetsBinding.instance.addObserver(this);
     _startPolling();
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -48,7 +55,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      _appActive = true;
       _triggerRefreshIfDue(reason: 'resume');
+      _scheduleNextPoll(delay: const Duration(seconds: 1));
+      return;
+    }
+
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      _appActive = false;
+      _pollTimer?.cancel();
     }
   }
 
@@ -85,16 +103,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 
   void _startPolling() async {
     // Initial wallet
-    final w = await _fixer.wallet();
-    setState(() {
-      _coins = ((w['coin_balance'] ?? w['coins'] ?? 0) as num).toInt();
-    });
-    _tick();
+    try {
+      final w = await _fixer.wallet();
+      if (!mounted) return;
+      setState(() {
+        _coins = ((w['coin_balance'] ?? w['coins'] ?? 0) as num).toInt();
+      });
+    } catch (_) {
+      // Keep the last known coin state and continue polling.
+    }
+    _scheduleNextPoll(delay: Duration.zero);
   }
 
   Future<void> _tick() async {
-    if (!mounted) return;
-    if (_polling) return;
+    if (!mounted || !_appActive) return;
+    if (_polling) {
+      _scheduleNextPoll();
+      return;
+    }
+    final connectivity = ref.read(connectivityProvider);
+    if (!connectivity.isOnline) {
+      _scheduleNextPoll(delay: const Duration(seconds: 15));
+      return;
+    }
     _polling = true;
     try {
       // Assigned-to-me pending
@@ -113,11 +144,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       }
     } finally {
       _polling = false;
-      if (mounted) {
-        // schedule next tick
-        Future.delayed(const Duration(seconds: 10), _tick);
-      }
+      _scheduleNextPoll();
     }
+  }
+
+  void _scheduleNextPoll({Duration delay = const Duration(seconds: 10)}) {
+    _pollTimer?.cancel();
+    if (!mounted || !_appActive) {
+      return;
+    }
+    _pollTimer = Timer(delay, _tick);
   }
 
   Future<void> _showRequestDialog(ServiceRequest r) async {
@@ -161,7 +197,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     switch (result) {
       case _RequestSheetResult.accepted:
         AppSnack.show(context, message: 'Request accepted', success: true);
-        final w = await _fixer.wallet();
+        final w = await _fixer.wallet(forceRefresh: true);
         if (!mounted) return;
         setState(() {
           _coins = ((w['coin_balance'] ?? w['coins'] ?? 0) as num).toInt();
@@ -171,7 +207,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       case _RequestSheetResult.purchase:
         await Navigator.pushNamed(context, '/subscriptions');
         if (!mounted) return;
-        final w = await _fixer.wallet();
+        final w = await _fixer.wallet(forceRefresh: true);
         if (!mounted) return;
         setState(
           () =>
@@ -317,7 +353,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                               context,
                               '/booking_detail',
                               arguments: {'id': r.id, 'request': payload},
-                            );
+                            ).then((result) {
+                              if (result == true && mounted) {
+                                _triggerRefreshIfDue(
+                                  reason: 'booking_detail_result',
+                                  minInterval: Duration.zero,
+                                );
+                              }
+                            });
                           },
                         ),
                       ),

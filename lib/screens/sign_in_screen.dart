@@ -47,6 +47,7 @@ class _SignInScreenState extends State<SignInScreen> {
     final remembered =
         prefs.getString('remember_identifier') ??
         prefs.getString('remember_email');
+    if (!mounted) return;
     if (remembered != null && remembered.isNotEmpty) {
       _identifierCtrl.text = remembered;
       setState(() => _rememberMe = true);

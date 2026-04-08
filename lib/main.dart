@@ -9,6 +9,7 @@ import 'package:fixitzed_fixer_app/screens/notifications/notifications_screen.da
 import 'package:fixitzed_fixer_app/screens/onboarding_screen.dart';
 import 'package:fixitzed_fixer_app/screens/profile/edit_profile_screen.dart';
 import 'package:fixitzed_fixer_app/screens/profile/profile_screen.dart';
+import 'package:fixitzed_fixer_app/screens/settings_screen.dart';
 import 'package:fixitzed_fixer_app/screens/sign_in_screen.dart';
 import 'package:fixitzed_fixer_app/screens/splash_screen.dart';
 import 'package:fixitzed_fixer_app/screens/subscriptions/subscription_screen.dart';
@@ -65,6 +66,7 @@ class FixerApp extends ConsumerWidget {
             '/subscriptions': (context) => const SubscriptionScreen(),
             '/profile': (context) => const ProfileScreen(),
             '/profile/edit': (context) => const EditProfileScreen(),
+            '/settings': (context) => const SettingsScreen(),
             '/wallet/transactions': (context) =>
                 const WalletTransactionsScreen(),
             '/notifications': (context) => const NotificationsScreen(),

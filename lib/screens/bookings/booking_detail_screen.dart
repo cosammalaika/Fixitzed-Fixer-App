@@ -127,7 +127,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
           list = root;
         }
         final match = (list ?? []).whereType<Map<String, dynamic>>().firstWhere(
-          (row) => (row['id'] as num?)?.toInt() == id,
+          (row) =>
+              _parseId(row['id'] ?? row['request_id'] ?? row['requestId']) ==
+              id,
           orElse: () => const <String, dynamic>{},
         );
         if (match.isEmpty) return null;
@@ -203,7 +205,8 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
 
   Map<String, dynamic> get _data => widget.detail;
 
-  int get _requestId => (_data['id'] as num).toInt();
+  int? get _requestId =>
+      _parseInt(_data['id'] ?? _data['request_id'] ?? _data['requestId']);
 
   bool _isTruthy(dynamic value) {
     if (value is bool) return value;
@@ -231,9 +234,29 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     final ref = _data['reference'] ?? _data['code'] ?? _data['booking_code'];
     final result = ref?.toString().trim();
     if (result == null || result.isEmpty || result == 'null') {
-      return _requestId.toString();
+      return _requestId?.toString() ?? '—';
     }
     return result;
+  }
+
+  int? _parseInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value.trim());
+    return null;
+  }
+
+  int? _requireRequestId() {
+    final requestId = _requestId;
+    if (requestId != null && requestId > 0) {
+      return requestId;
+    }
+    AppSnack.show(
+      context,
+      message: 'This booking is missing request information. Please refresh.',
+      success: false,
+    );
+    return null;
   }
 
   DateTime? _scheduledAt() {
@@ -325,6 +348,10 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
   }
 
   Future<bool> _acceptRequest() async {
+    final requestId = _requireRequestId();
+    if (requestId == null) {
+      return false;
+    }
     if (!_hasAccess) {
       AppSnack.show(
         context,
@@ -334,7 +361,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
       return false;
     }
     await _setProcessing(true);
-    final result = await widget.fixerService.acceptRequestDetailed(_requestId);
+    final result = await widget.fixerService.acceptRequestDetailed(requestId);
     await _setProcessing(false);
     if (!mounted) return result['success'] == true;
     final ok = result['success'] == true;
@@ -353,6 +380,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     );
     if (ok) {
       LocalNotificationService.instance.notifyJobUpdate(
+        requestId: requestId,
         bookingCode: _bookingCode(),
         status: 'accepted',
         scheduledAt: _scheduledAt(),
@@ -363,13 +391,17 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
   }
 
   Future<void> _cancelRequest() async {
+    final requestId = _requireRequestId();
+    if (requestId == null) {
+      return;
+    }
     if (kDebugMode) {
       debugPrint(
-        'Decline request id=$_requestId status=${_status()} detail=${_data['id']}',
+        'Decline request id=$requestId status=${_status()} detail=${_data['id']}',
       );
     }
     await _setProcessing(true);
-    final result = await widget.fixerService.declineRequest(_requestId);
+    final result = await widget.fixerService.declineRequest(requestId);
     await _setProcessing(false);
     if (!mounted) return;
     final ok = result['success'] == true;
@@ -388,6 +420,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     );
     if (ok) {
       LocalNotificationService.instance.notifyJobUpdate(
+        requestId: requestId,
         bookingCode: _bookingCode(),
         status: 'declined',
         scheduledAt: _scheduledAt(),
@@ -397,10 +430,14 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
   }
 
   Future<void> _snoozeRequest() async {
+    final requestId = _requireRequestId();
+    if (requestId == null) {
+      return;
+    }
     setState(() => _snoozing = true);
-    final ok = await widget.fixerService.snoozeRequest(_requestId);
-    setState(() => _snoozing = false);
+    final ok = await widget.fixerService.snoozeRequest(requestId);
     if (!mounted) return;
+    setState(() => _snoozing = false);
     AppSnack.show(
       context,
       message: ok
@@ -412,10 +449,14 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
   }
 
   Future<void> _sendBill() async {
+    final requestId = _requireRequestId();
+    if (requestId == null) {
+      return;
+    }
     final amount = await _promptAmount();
     if (amount == null) return;
     await _setProcessing(true);
-    final ok = await widget.fixerService.createBill(_requestId, amount);
+    final ok = await widget.fixerService.createBill(requestId, amount);
     await _setProcessing(false);
     if (!mounted) return;
     AppSnack.show(
@@ -425,6 +466,7 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
     );
     if (ok) {
       LocalNotificationService.instance.notifyJobUpdate(
+        requestId: requestId,
         bookingCode: _bookingCode(),
         status: 'awaiting payment',
         scheduledAt: _scheduledAt(),
@@ -988,16 +1030,41 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
   Widget _actionSection(String status, Color brand) {
     final colors = Theme.of(context).fx;
     final lower = status.toLowerCase();
-    final canAccept = lower == 'pending' && _hasAccess;
-    final canSendBill = lower == 'accepted';
-    final canDecline = lower == 'pending';
-    final canSnooze = lower == 'pending';
+    final hasRequestId = (_requestId ?? 0) > 0;
+    final canAccept = hasRequestId && lower == 'pending' && _hasAccess;
+    final canSendBill = hasRequestId && lower == 'accepted';
+    final canDecline = hasRequestId && lower == 'pending';
+    final canSnooze = hasRequestId && lower == 'pending';
     final isUnavailable =
         lower == 'expired' || _isCancelledStatus(lower) || lower == 'declined';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (!hasRequestId)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: colors.warningContainer,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline_rounded, color: colors.warning),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'This booking is missing request details. Pull to refresh before taking action.',
+                    style: GoogleFonts.urbanist(
+                      fontWeight: FontWeight.w600,
+                      color: colors.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        if (!hasRequestId) const SizedBox(height: 12),
         if (isUnavailable)
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1068,7 +1135,11 @@ class _FixerBookingSheetState extends State<_FixerBookingSheet> {
         SizedBox(
           height: 56,
           child: SwipeActionButton(
-            label: canAccept ? 'Swipe to accept booking' : 'Already accepted',
+            label: canAccept
+                ? 'Swipe to accept booking'
+                : lower == 'accepted'
+                ? 'Already accepted'
+                : 'Booking unavailable',
             loadingLabel: 'Accepting…',
             releaseLabel: 'Release to accept',
             enabled: canAccept && !_processing,

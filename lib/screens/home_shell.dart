@@ -36,13 +36,14 @@ class _HomeShellState extends State<HomeShell> {
         bottomNavigationBar: FixerBottomNav(
           currentIndex: _index,
           onTap: (i) {
-            if (i == 0) {
+            final wasCurrent = i == _index;
+            setState(() => _index = i);
+            if (i == 0 && wasCurrent) {
               AppSync.instance.emit(
                 AppSyncTopic.dashboard,
-                payload: const {'source': 'tab_enter'},
+                payload: const {'source': 'tab_reselected'},
               );
             }
-            setState(() => _index = i);
           },
         ),
       ),

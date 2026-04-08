@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:fixitzed_fixer_app/core/app_theme.dart';
@@ -8,27 +9,32 @@ import 'package:fixitzed_fixer_app/models/notification_item.dart';
 import 'package:fixitzed_fixer_app/screens/notifications/widgets/notification_details_sheet.dart';
 import 'package:fixitzed_fixer_app/state/app_sync.dart';
 import 'package:fixitzed_fixer_app/services/notifications_service.dart';
+import 'package:fixitzed_fixer_app/state/service_providers.dart';
 
-class NotificationsScreen extends StatefulWidget {
+class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  State<NotificationsScreen> createState() => _NotificationsScreenState();
+  ConsumerState<NotificationsScreen> createState() =>
+      _NotificationsScreenState();
 }
 
-class _NotificationsScreenState extends State<NotificationsScreen> {
-  final _svc = NotificationsService();
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+  late final NotificationsService _svc;
   bool _loading = true;
+  bool _hardFailure = false;
   List<NotificationItem> _items = const [];
   StreamSubscription<AppSyncEvent>? _subscription;
   final Set<int> _deleting = <int>{};
   final Set<int> _markingRead = <int>{};
   final Set<String> _pendingRemovalKeys = <String>{};
+  Future<void>? _loadFuture;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _svc = ref.read(notificationsServiceProvider);
+    unawaited(_load());
     _subscription = AppSync.instance
         .on(AppSyncTopic.notifications)
         .listen((_) => _load(silent: true));
@@ -40,17 +46,39 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     super.dispose();
   }
 
-  Future<void> _load({bool silent = false}) async {
-    if (!silent) {
+  Future<void> _load({bool silent = false, bool forceRefresh = false}) async {
+    final existing = _loadFuture;
+    if (existing != null) {
+      await existing;
+      return;
+    }
+
+    final future = _performLoad(silent: silent, forceRefresh: forceRefresh);
+    _loadFuture = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_loadFuture, future)) {
+        _loadFuture = null;
+      }
+    }
+  }
+
+  Future<void> _performLoad({
+    required bool silent,
+    required bool forceRefresh,
+  }) async {
+    final shouldShowLoader = !silent && _items.isEmpty;
+    if (shouldShowLoader && mounted) {
       setState(() => _loading = true);
     }
-    final list = await _svc.list();
+    final result = await _svc.load(forceRefresh: forceRefresh);
     if (!mounted) return;
     setState(() {
-      _items = list;
-      if (!silent) {
-        _loading = false;
-      }
+      _items = result.items;
+      _hardFailure =
+          !result.success && !result.usedCacheFallback && result.items.isEmpty;
+      _loading = false;
     });
   }
 
@@ -144,6 +172,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final selected = current ?? notification;
     final itemForSheet = _markAsReadOptimistically(selected);
     if (!mounted) return;
+    final requestId = itemForSheet.serviceRequestId;
+    if (requestId != null && requestId > 0) {
+      await Navigator.of(
+        context,
+      ).pushNamed('/booking_detail', arguments: {'id': requestId});
+      if (!mounted) return;
+      unawaited(_load(silent: true, forceRefresh: true));
+      return;
+    }
     await NotificationDetailsSheet.show(context, notification: itemForSheet);
   }
 
@@ -348,8 +385,40 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: _loading
           ? const Center(child: CircularProgressIndicator())
+          : _hardFailure
+          ? RefreshIndicator(
+              onRefresh: () => _load(forceRefresh: true),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(24, 120, 24, 24),
+                children: [
+                  Icon(
+                    Icons.wifi_off_rounded,
+                    size: 64,
+                    color: Theme.of(context).fx.textMuted,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Couldn\'t load notifications',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.urbanist(
+                      fontWeight: FontWeight.w700,
+                      color: Theme.of(context).fx.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Pull down to try again when your connection is stable.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.urbanist(
+                      color: Theme.of(context).fx.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            )
           : RefreshIndicator(
-              onRefresh: _load,
+              onRefresh: () => _load(forceRefresh: true),
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                 children: [
@@ -371,7 +440,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               : () async {
                                   final ok = await _svc.markAllRead();
                                   if (ok) {
-                                    await _load();
+                                    await _load(
+                                      silent: true,
+                                      forceRefresh: true,
+                                    );
                                   }
                                 },
                           child: Text(

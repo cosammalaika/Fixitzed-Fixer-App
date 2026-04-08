@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart' show AsyncValue, Ref;
 import 'package:flutter_riverpod/legacy.dart';
 
 import 'package:fixitzed_fixer_app/models/service_request.dart';
@@ -43,32 +43,62 @@ class FixerBookingsController
     if (cached != null) {
       state = AsyncValue.data(cached);
     }
-    refresh();
+    unawaited(refresh(silent: cached != null, forceRefresh: cached == null));
     _registerSync();
   }
 
   final FixerService _service;
   final Ref _ref;
-  bool _refreshing = false;
+  Future<void>? _refreshInFlight;
   static FixerBookingsState? _cache;
   static DateTime? _cacheFetchedAt;
   static const Duration _ttl = Duration(minutes: 5);
+  DateTime? _lastRefreshAt;
+  static const Duration _minRefreshGap = Duration(seconds: 8);
 
-  Future<void> refresh({bool silent = false}) async {
-    if (_refreshing) return;
-    _refreshing = true;
-    if (!silent) {
-      state = const AsyncValue<FixerBookingsState>.loading().copyWithPrevious(
-        state,
-      );
+  Future<void> refresh({bool silent = false, bool forceRefresh = false}) async {
+    final existing = _refreshInFlight;
+    if (existing != null) {
+      await existing;
+      return;
     }
-    final result = await AsyncValue.guard<FixerBookingsState>(() async {
+
+    if (!forceRefresh &&
+        _lastRefreshAt != null &&
+        DateTime.now().difference(_lastRefreshAt!) < _minRefreshGap) {
+      return;
+    }
+
+    final future = _runRefresh(silent: silent, forceRefresh: forceRefresh);
+    _refreshInFlight = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_refreshInFlight, future)) {
+        _refreshInFlight = null;
+      }
+    }
+  }
+
+  Future<void> _runRefresh({
+    required bool silent,
+    required bool forceRefresh,
+  }) async {
+    final previous = state.value ?? _freshCache();
+    if (!silent && previous == null) {
+      state = const AsyncValue<FixerBookingsState>.loading();
+    }
+
+    try {
       final responses = await Future.wait<List<ServiceRequest>>([
-        _service.requests(status: 'pending'),
-        _service.requests(status: 'accepted'),
-        _service.requests(status: 'completed'),
-        _service.requests(status: 'declined'),
-        _service.requests(status: 'awaiting_payment'),
+        _service.requests(status: 'pending', forceRefresh: forceRefresh),
+        _service.requests(status: 'accepted', forceRefresh: forceRefresh),
+        _service.requests(status: 'completed', forceRefresh: forceRefresh),
+        _service.requests(status: 'declined', forceRefresh: forceRefresh),
+        _service.requests(
+          status: 'awaiting_payment',
+          forceRefresh: forceRefresh,
+        ),
       ]);
       final pending = responses[0];
       final accepted = responses[1];
@@ -76,20 +106,24 @@ class FixerBookingsController
       final declined = responses[3];
       final awaitingPayment = responses[4];
 
-      return FixerBookingsState(
+      final next = FixerBookingsState(
         pending: pending,
         accepted: _mergeDistinct(accepted, awaitingPayment),
         completed: completed,
         declined: declined,
         awaitingPayment: awaitingPayment,
       );
-    });
-    state = result;
-    if (result.hasValue) {
-      _cache = result.value;
+      state = AsyncValue.data(next);
+      _cache = next;
       _cacheFetchedAt = DateTime.now();
+      _lastRefreshAt = _cacheFetchedAt;
+    } catch (error, stackTrace) {
+      if (previous != null) {
+        state = AsyncValue.data(previous);
+        return;
+      }
+      state = AsyncValue.error(error, stackTrace);
     }
-    _refreshing = false;
   }
 
   static FixerBookingsState? _freshCache() {
@@ -100,13 +134,20 @@ class FixerBookingsController
 
   void _registerSync() {
     _ref.onAppSync(AppSyncTopic.requests, (_) {
-      unawaited(refresh());
-    });
-    _ref.onAppSync(AppSyncTopic.dashboard, (_) {
-      unawaited(refresh(silent: true));
+      unawaited(refresh(silent: true, forceRefresh: true));
     });
     _ref.onAppSync(AppSyncTopic.wallet, (_) {
-      unawaited(refresh(silent: true));
+      unawaited(refresh(silent: true, forceRefresh: true));
+    });
+    _ref.onAppSync(AppSyncTopic.auth, (event) {
+      final payload = event.payload;
+      final action = payload is Map
+          ? payload['action']?.toString().trim().toLowerCase()
+          : null;
+      if (action != 'logout') return;
+      _cache = null;
+      _cacheFetchedAt = null;
+      state = const AsyncValue<FixerBookingsState>.loading();
     });
   }
 }

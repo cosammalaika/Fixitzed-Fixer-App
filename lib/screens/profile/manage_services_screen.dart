@@ -297,8 +297,8 @@ class _ManageServicesScreenState extends ConsumerState<ManageServicesScreen> {
     final success = await ref
         .read(fixerProfileProvider.notifier)
         .updateServices(_selected.toList());
-    setState(() => _saving = false);
     if (!mounted) return;
+    setState(() => _saving = false);
     if (success) {
       _seeded = false;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -307,8 +307,10 @@ class _ManageServicesScreenState extends ConsumerState<ManageServicesScreen> {
       Navigator.pop(context, true);
     } else {
       final err = ref.read(fixerProfileProvider).error;
-      final message =
-          err?.toString() ?? 'Could not update services. Please try again.';
+      final raw = err?.toString().trim();
+      final message = raw != null && raw.isNotEmpty
+          ? 'Unable to update services right now. Please try again.'
+          : 'Could not update services. Please try again.';
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(message)));

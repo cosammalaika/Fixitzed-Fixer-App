@@ -2,6 +2,7 @@ class Fixer {
   final int id;
   final User user;
   final String? bio;
+  final String? location;
   final String availability; // available|busy|offline
   final double? ratingAvg;
   final List<Service> services;
@@ -11,6 +12,7 @@ class Fixer {
     required this.id,
     required this.user,
     required this.bio,
+    required this.location,
     required this.availability,
     required this.ratingAvg,
     required this.services,
@@ -31,6 +33,7 @@ class Fixer {
             },
     ),
     bio: j['bio'] as String?,
+    location: (j['location'] ?? j['address'])?.toString(),
     availability: (j['availability'] ?? 'available').toString(),
     ratingAvg: j['rating_avg'] == null
         ? null
@@ -46,14 +49,14 @@ class Fixer {
         })
         .whereType<Service>()
         .toList(),
-    priorityPoints:
-        _parseId(j['priority_points'] ?? j['priorityPoints']) ?? 0,
+    priorityPoints: _parseId(j['priority_points'] ?? j['priorityPoints']) ?? 0,
   );
 
   Map<String, dynamic> toJson() => {
     'id': id,
     'user': user.toJson(),
     'bio': bio,
+    'location': location,
     'availability': availability,
     'rating_avg': ratingAvg,
     'services': services.map((s) => s.toJson()).toList(),

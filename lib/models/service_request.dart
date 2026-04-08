@@ -132,6 +132,7 @@ class ServiceRequest {
           profilePhotoUrl: null,
         ),
         bio: null,
+        location: null,
         availability: 'available',
         ratingAvg: null,
         services: const [],

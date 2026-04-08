@@ -8,39 +8,60 @@ import 'package:fixitzed_fixer_app/services/api_client.dart';
 import 'package:fixitzed_fixer_app/services/token_storage.dart';
 import 'package:fixitzed_fixer_app/state/service_providers.dart';
 
-class SplashScreen extends ConsumerWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!context.mounted) return;
-      final prefs = await SharedPreferences.getInstance();
-      final hasSeen = prefs.getBool('fixer_onboarding_seen') ?? false;
-      if (!context.mounted) return;
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
+}
 
-      if (!hasSeen) {
-        Navigator.of(context).pushReplacementNamed('/onboarding');
-        return;
-      }
+class _SplashScreenState extends ConsumerState<SplashScreen> {
+  bool _bootstrapped = false;
 
-      final token = await TokenStorage.instance.getToken();
-      if (!context.mounted) return;
-      if (token == null || token.isEmpty) {
-        Navigator.of(context).pushReplacementNamed('/signin');
-        return;
-      }
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_bootstrap());
+  }
 
+  Future<void> _bootstrap() async {
+    if (_bootstrapped) return;
+    _bootstrapped = true;
+
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeen = prefs.getBool('fixer_onboarding_seen') ?? false;
+    if (!mounted) return;
+
+    if (!hasSeen) {
+      Navigator.of(context).pushReplacementNamed('/onboarding');
+      return;
+    }
+
+    final token = await TokenStorage.instance.getToken();
+    if (!mounted) return;
+    if (token == null || token.isEmpty) {
+      Navigator.of(context).pushReplacementNamed('/signin');
+      return;
+    }
+
+    var route = '/home';
+    try {
       final res = await ApiClient.I.get('/api/me');
-      if (!context.mounted) return;
-      final route = res.statusCode == 200 ? '/home' : '/signin';
-      if (route == '/home') {
-        // Kick off preload but do not block navigation.
-        unawaited(ref.read(preloadServiceProvider).preloadAll());
-      }
-      Navigator.of(context).pushReplacementNamed(route);
-    });
+      route = res.statusCode == 200 ? '/home' : '/signin';
+    } catch (_) {
+      // Keep signed-in fixers moving when validation fails due to connectivity.
+      route = '/home';
+    }
 
+    if (!mounted) return;
+    if (route == '/home') {
+      unawaited(ref.read(preloadServiceProvider).preloadAll());
+    }
+    Navigator.of(context).pushReplacementNamed(route);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       body: DecoratedBox(
         decoration: const BoxDecoration(

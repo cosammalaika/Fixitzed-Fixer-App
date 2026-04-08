@@ -32,6 +32,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       pushOn = prefs.getBool(_kPush) ?? true;
       emailOn = prefs.getBool(_kEmail) ?? true;

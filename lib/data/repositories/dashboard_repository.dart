@@ -21,6 +21,7 @@ class FixerDashboardRepository {
   DateTime? _fetchedAt;
   String? _etag;
   bool _hydrated = false;
+  Future<FixerDashboardSnapshot>? _inFlight;
 
   static const Duration _ttl = Duration(seconds: 45);
   static const _cachePayloadKey = 'fixer_dashboard.cache.payload';
@@ -44,6 +45,23 @@ class FixerDashboardRepository {
       return _cache!.copyWith(fromCache: true);
     }
 
+    final existing = _inFlight;
+    if (existing != null) {
+      return existing;
+    }
+
+    final future = _fetchDashboardInternal();
+    _inFlight = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_inFlight, future)) {
+        _inFlight = null;
+      }
+    }
+  }
+
+  Future<FixerDashboardSnapshot> _fetchDashboardInternal() async {
     try {
       return await _fetchFromDashboardEndpoint();
     } on _DashboardEndpointUnavailable {
@@ -60,13 +78,23 @@ class FixerDashboardRepository {
     }
   }
 
+  Future<void> clearCache() async {
+    _cache = null;
+    _fetchedAt = null;
+    _etag = null;
+    _inFlight = null;
+    _hydrated = true;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_cachePayloadKey);
+    await prefs.remove(_cacheFetchedAtKey);
+    await prefs.remove(_cacheEtagKey);
+  }
+
   Future<FixerDashboardSnapshot> _fetchFromDashboardEndpoint() async {
     final res = await _api.get(
       '/api/fixer/dashboard',
       query: const {'limit': '5'},
-      headers: {
-        if ((_etag ?? '').isNotEmpty) 'If-None-Match': _etag!,
-      },
+      headers: {if ((_etag ?? '').isNotEmpty) 'If-None-Match': _etag!},
     );
 
     if (kDebugMode) {

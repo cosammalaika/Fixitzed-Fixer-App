@@ -23,11 +23,41 @@ class FixerService {
   static final ValueNotifier<int?> priorityPointsNotifier = ValueNotifier<int?>(
     null,
   );
+  static final Map<String, List<ServiceRequest>> _requestsCache =
+      <String, List<ServiceRequest>>{};
+  static final Map<String, DateTime> _requestsFetchedAt = <String, DateTime>{};
+  static final Map<String, Future<List<ServiceRequest>>> _requestsInFlight =
+      <String, Future<List<ServiceRequest>>>{};
+  static List<ServiceRequest> _unassignedCache = const <ServiceRequest>[];
+  static DateTime? _unassignedFetchedAt;
+  static Future<List<ServiceRequest>>? _unassignedInFlight;
+  static Map<String, dynamic> _walletCache = const <String, dynamic>{};
+  static DateTime? _walletFetchedAt;
+  static Future<Map<String, dynamic>>? _walletInFlight;
+  static final Map<int, Map<String, dynamic>> _declinedCache =
+      <int, Map<String, dynamic>>{};
+  static const Duration _requestsTtl = Duration(seconds: 20);
+  static const Duration _unassignedTtl = Duration(seconds: 20);
+  static const Duration _walletTtl = Duration(minutes: 1);
 
   static void broadcastPriorityPoints(int? value) {
     if (priorityPointsNotifier.value != value) {
       priorityPointsNotifier.value = value;
     }
+  }
+
+  static void clearCache() {
+    _requestsCache.clear();
+    _requestsFetchedAt.clear();
+    _requestsInFlight.clear();
+    _unassignedCache = const <ServiceRequest>[];
+    _unassignedFetchedAt = null;
+    _unassignedInFlight = null;
+    _walletCache = const <String, dynamic>{};
+    _walletFetchedAt = null;
+    _walletInFlight = null;
+    _declinedCache.clear();
+    broadcastPriorityPoints(null);
   }
 
   Future<Map<String, dynamic>?> dashboard() async {
@@ -37,74 +67,140 @@ class FixerService {
     return null;
   }
 
-  Future<List<ServiceRequest>> requests({String? status}) async {
-    final res = await _api.get(
-      '/api/fixer/requests',
-      query: {if (status != null) 'status': status},
-    );
-    if (res.statusCode != 200) return [];
-    final root = jsonDecode(res.body);
-    List<dynamic>? list;
-    if (root is List) {
-      list = root;
-    } else if (root is Map<String, dynamic>) {
-      // common patterns: { data: [...] } or { data: { data: [...] } } or { requests: [...] }
-      final data = root['data'];
-      if (data is List) list = data;
-      if (data is Map && data['data'] is List) list = data['data'] as List;
-      if (list == null && root['requests'] is List)
-        list = root['requests'] as List;
-      // fallback: first array value in map
-      list ??=
-          root.values.firstWhere((v) => v is List, orElse: () => const [])
-              as List;
+  Future<List<ServiceRequest>> requests({
+    String? status,
+    bool forceRefresh = false,
+  }) async {
+    final key = status?.trim().toLowerCase() ?? 'all';
+    final now = DateTime.now();
+    final cached = _requestsCache[key];
+    final fetchedAt = _requestsFetchedAt[key];
+    if (!forceRefresh &&
+        cached != null &&
+        fetchedAt != null &&
+        now.difference(fetchedAt) < _requestsTtl) {
+      _log('requests_cache_hit', <String, Object?>{
+        'filter': key,
+        'count': cached.length,
+      });
+      return List<ServiceRequest>.from(cached);
     }
-    final requests = (list ?? const [])
-        .whereType<Map<String, dynamic>>()
-        .map(ServiceRequest.fromJson)
-        .toList();
-    unawaited(_notifyAssignments(requests));
-    if (status == 'declined') {
-      for (final req in requests) {
-        _declinedCache[req.id] = req.toJson();
+    if (!forceRefresh) {
+      final existing = _requestsInFlight[key];
+      if (existing != null) {
+        return existing;
       }
     }
-    final priority = requests
-        .map((req) => req.fixer?.priorityPoints)
-        .whereType<int>()
-        .fold<int?>(null, (prev, element) => prev ?? element);
-    if (priority != null) {
-      broadcastPriorityPoints(priority);
+
+    final future = _loadRequests(key: key, status: status);
+    _requestsInFlight[key] = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_requestsInFlight[key], future)) {
+        _requestsInFlight.remove(key);
+      }
+    }
+  }
+
+  Future<List<ServiceRequest>> _loadRequests({
+    required String key,
+    required String? status,
+  }) async {
+    try {
+      final res = await _api.get(
+        '/api/fixer/requests',
+        query: {if (status != null) 'status': status},
+      );
+      if (res.statusCode == 200) {
+        final requests = _parseRequestsList(jsonDecode(res.body));
+        _requestsCache[key] = List<ServiceRequest>.from(requests);
+        _requestsFetchedAt[key] = DateTime.now();
+        unawaited(_notifyAssignments(requests));
+        if (status == 'declined') {
+          for (final req in requests) {
+            _declinedCache[req.id] = req.toJson();
+          }
+        }
+        final priority = requests
+            .map((req) => req.fixer?.priorityPoints)
+            .whereType<int>()
+            .fold<int?>(null, (prev, element) => prev ?? element);
+        if (priority != null) {
+          broadcastPriorityPoints(priority);
+        }
+        return requests;
+      }
+      _log('requests_failure', <String, Object?>{
+        'status': res.statusCode,
+        'filter': key,
+      });
+    } catch (error) {
+      _log('requests_exception', <String, Object?>{
+        'filter': key,
+        'error': error.toString(),
+      });
     }
 
-    return requests;
+    final cached = _requestsCache[key];
+    if (cached != null) {
+      _log('requests_cache_fallback', <String, Object?>{
+        'filter': key,
+        'count': cached.length,
+      });
+      return List<ServiceRequest>.from(cached);
+    }
+    return const <ServiceRequest>[];
   }
 
   /// Try to fetch unassigned/eligible requests for this fixer.
   /// If the backend doesn't expose this route, returns an empty list.
-  Future<List<ServiceRequest>> unassigned() async {
-    final res = await _api.get('/api/fixer/requests/unassigned');
-    if (res.statusCode == 200) {
-      final root = jsonDecode(res.body);
-      List list;
-      if (root is Map<String, dynamic>) {
-        final data = root['data'];
-        list = (data is Map<String, dynamic>)
-            ? (data['data'] as List? ?? [])
-            : (data as List? ?? []);
-      } else if (root is List) {
-        list = root;
-      } else {
-        list = [];
-      }
-      final requests = list
-          .whereType<Map<String, dynamic>>()
-          .map(ServiceRequest.fromJson)
-          .toList();
-      unawaited(_notifyAssignments(requests));
-      return requests;
+  Future<List<ServiceRequest>> unassigned({bool forceRefresh = false}) async {
+    final now = DateTime.now();
+    if (!forceRefresh &&
+        _unassignedFetchedAt != null &&
+        now.difference(_unassignedFetchedAt!) < _unassignedTtl) {
+      _log('unassigned_cache_hit', <String, Object?>{
+        'count': _unassignedCache.length,
+      });
+      return List<ServiceRequest>.from(_unassignedCache);
     }
-    return [];
+    if (!forceRefresh && _unassignedInFlight != null) {
+      return _unassignedInFlight!;
+    }
+
+    final future = _loadUnassigned();
+    _unassignedInFlight = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_unassignedInFlight, future)) {
+        _unassignedInFlight = null;
+      }
+    }
+  }
+
+  Future<List<ServiceRequest>> _loadUnassigned() async {
+    try {
+      final res = await _api.get('/api/fixer/requests/unassigned');
+      if (res.statusCode == 200) {
+        final requests = _parseRequestsList(jsonDecode(res.body));
+        _unassignedCache = List<ServiceRequest>.from(requests);
+        _unassignedFetchedAt = DateTime.now();
+        unawaited(_notifyAssignments(requests));
+        return requests;
+      }
+      _log('unassigned_failure', <String, Object?>{'status': res.statusCode});
+    } catch (error) {
+      _log('unassigned_exception', <String, Object?>{
+        'error': error.toString(),
+      });
+    }
+
+    if (_unassignedCache.isNotEmpty) {
+      return List<ServiceRequest>.from(_unassignedCache);
+    }
+    return const <ServiceRequest>[];
   }
 
   Future<List<ServiceRequest>> requestsToday() async {
@@ -121,6 +217,7 @@ class FixerService {
   Future<ServiceRequest?> transition(int id, String action) async {
     final res = await _api.patch('/api/fixer/requests/$id/$action', body: {});
     if (res.statusCode == 200) {
+      _invalidateRequestCaches();
       return ServiceRequest.fromJson(
         jsonDecode(res.body) as Map<String, dynamic>,
       );
@@ -142,6 +239,7 @@ class FixerService {
     }
     final ok = res.statusCode == 200 || res.statusCode == 201;
     if (ok) {
+      _invalidateRequestCaches(invalidateWallet: true);
       unawaited(profile());
       _emitRequests(action: 'accept', requestId: id, status: 'accepted');
     }
@@ -158,6 +256,7 @@ class FixerService {
     final res = await _api.patch('/api/requests/$id', body: {'status': status});
     final ok = res.statusCode >= 200 && res.statusCode < 300;
     if (ok) {
+      _invalidateRequestCaches();
       _emitRequests(action: 'status', requestId: id, status: status);
     }
     return ok;
@@ -174,6 +273,7 @@ class FixerService {
         res.statusCode < 300 &&
         (body['success'] ?? true) == true;
     if (successFlag) {
+      _invalidateRequestCaches();
       final points = _extractPriorityPoints(body);
       if (points != null) {
         broadcastPriorityPoints(points);
@@ -194,6 +294,7 @@ class FixerService {
     final res = await _api.post('/api/fixer/requests/$id/snooze', body: {});
     final ok = res.statusCode >= 200 && res.statusCode < 300;
     if (ok) {
+      _invalidateRequestCaches();
       _emitRequests(action: 'snooze', requestId: id);
     }
     return ok;
@@ -268,8 +369,6 @@ class FixerService {
     return null;
   }
 
-  final Map<int, Map<String, dynamic>> _declinedCache = {};
-
   Map<String, dynamic>? _unwrapRequest(dynamic root) {
     if (root is Map<String, dynamic>) {
       for (final key in [
@@ -298,13 +397,35 @@ class FixerService {
       if (raw == null && root['requests'] is List) {
         raw = root['requests'] as List;
       }
-      raw ??= root.values.firstWhere(
-        (v) => v is List,
-        orElse: () => const [],
-      ) as List;
+      raw ??=
+          root.values.firstWhere((v) => v is List, orElse: () => const [])
+              as List;
     }
     if (raw == null) return null;
-    return raw.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+    return raw
+        .whereType<Map>()
+        .map((m) => Map<String, dynamic>.from(m))
+        .toList();
+  }
+
+  List<ServiceRequest> _parseRequestsList(dynamic root) {
+    final list = _unwrapRequestList(root);
+    if (list == null || list.isEmpty) {
+      return const <ServiceRequest>[];
+    }
+
+    final requests = <ServiceRequest>[];
+    for (final item in list) {
+      try {
+        requests.add(ServiceRequest.fromJson(item));
+      } catch (error) {
+        _log('request_parse_skipped', <String, Object?>{
+          'error': error.toString(),
+          'id': item['id']?.toString(),
+        });
+      }
+    }
+    return requests;
   }
 
   bool _matchesId(Map<String, dynamic> data, int id) {
@@ -354,30 +475,67 @@ class FixerService {
     );
     final ok = res.statusCode >= 200 && res.statusCode < 300;
     if (ok) {
+      _invalidateRequestCaches();
       _emitRequests(action: 'bill', requestId: id);
     }
     return ok;
   }
 
   // Wallet: balance and coins remaining
-  Future<Map<String, dynamic>> wallet() async {
-    final res = await _api.get('/api/fixer/wallet');
-    if (res.statusCode == 200) {
-      final root = jsonDecode(res.body) as Map<String, dynamic>;
-      final data = (root['data'] ?? root) as Map<String, dynamic>;
-      return data;
+  Future<Map<String, dynamic>> wallet({bool forceRefresh = false}) async {
+    final now = DateTime.now();
+    if (!forceRefresh &&
+        _walletCache.isNotEmpty &&
+        _walletFetchedAt != null &&
+        now.difference(_walletFetchedAt!) < _walletTtl) {
+      _log('wallet_cache_hit', <String, Object?>{
+        'keys': _walletCache.keys.length,
+      });
+      return Map<String, dynamic>.from(_walletCache);
     }
-    return {};
+    if (!forceRefresh && _walletInFlight != null) {
+      return _walletInFlight!;
+    }
+
+    final future = _loadWallet();
+    _walletInFlight = future;
+    try {
+      return await future;
+    } finally {
+      if (identical(_walletInFlight, future)) {
+        _walletInFlight = null;
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>> _loadWallet() async {
+    try {
+      final res = await _api.get('/api/fixer/wallet');
+      if (res.statusCode == 200) {
+        final root = jsonDecode(res.body) as Map<String, dynamic>;
+        final data = (root['data'] ?? root) as Map<String, dynamic>;
+        _walletCache = Map<String, dynamic>.from(data);
+        _walletFetchedAt = DateTime.now();
+        return Map<String, dynamic>.from(_walletCache);
+      }
+      _log('wallet_failure', <String, Object?>{'status': res.statusCode});
+    } catch (error) {
+      _log('wallet_exception', <String, Object?>{'error': error.toString()});
+    }
+
+    return Map<String, dynamic>.from(_walletCache);
   }
 
   Future<Fixer?> updateMe({
     String? bio,
     String? availability,
+    String? location,
     List<int>? serviceIds,
   }) async {
     final body = <String, dynamic>{
       if (bio != null) 'bio': bio,
       if (availability != null) 'availability': availability,
+      if (location != null) 'location': location,
       if (serviceIds != null) 'service_ids': serviceIds,
     };
     final res = await _api.patch('/api/fixer/me', body: body);
@@ -588,6 +746,28 @@ class FixerService {
     if (value is num) return value.toInt();
     if (value is String) return int.tryParse(value);
     return null;
+  }
+
+  void _invalidateRequestCaches({bool invalidateWallet = false}) {
+    _requestsFetchedAt.clear();
+    _unassignedFetchedAt = null;
+    if (invalidateWallet) {
+      _walletFetchedAt = null;
+    }
+  }
+
+  void _log(String event, [Map<String, Object?> details = const {}]) {
+    if (!kDebugMode) {
+      return;
+    }
+    final suffix = details.entries
+        .map((entry) => '${entry.key}=${entry.value}')
+        .join(' ');
+    debugPrint(
+      suffix.isEmpty
+          ? '[FixerService] $event'
+          : '[FixerService] $event $suffix',
+    );
   }
 }
 
