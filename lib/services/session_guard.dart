@@ -6,12 +6,14 @@ class SessionGuard {
   SessionGuard._();
 
   static Future<void> evaluate(http.BaseResponse response) async {
-    if (_shouldInvalidate(response.statusCode)) {
-      await SessionManager.instance.ensureForcedLogout();
+    if (_shouldInspect(response.statusCode)) {
+      await SessionManager.instance.confirmActiveSessionOrLogout(
+        response.statusCode,
+      );
     }
   }
 
-  static bool _shouldInvalidate(int statusCode) {
-    return statusCode == 401 || statusCode == 419;
+  static bool _shouldInspect(int statusCode) {
+    return statusCode == 401 || statusCode == 419 || statusCode == 423;
   }
 }

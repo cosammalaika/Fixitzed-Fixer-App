@@ -4,8 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:fixitzed_fixer_app/services/api_client.dart';
-import 'package:fixitzed_fixer_app/services/token_storage.dart';
+import 'package:fixitzed_fixer_app/services/session_manager.dart';
 import 'package:fixitzed_fixer_app/state/service_providers.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -37,19 +36,30 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       return;
     }
 
-    final token = await TokenStorage.instance.getToken();
+    final sessionState = await SessionManager.instance.probeStoredSession();
     if (!mounted) return;
-    if (token == null || token.isEmpty) {
-      Navigator.of(context).pushReplacementNamed('/signin');
-      return;
-    }
 
-    var route = '/home';
-    try {
-      final res = await ApiClient.I.get('/api/me');
-      route = res.statusCode == 200 ? '/home' : '/signin';
-    } catch (_) {
-      // Keep signed-in fixers moving when validation fails due to connectivity.
+    String route;
+    if (sessionState == SessionValidationResult.missingToken ||
+        sessionState == SessionValidationResult.wrongApp) {
+      if (sessionState == SessionValidationResult.wrongApp) {
+        await SessionManager.instance.ensureForcedLogout(
+          reason: 'sessionExpired',
+        );
+      }
+      route = '/signin';
+    } else if (sessionState == SessionValidationResult.invalidToken) {
+      await SessionManager.instance.ensureForcedLogout(
+        reason: 'sessionExpired',
+      );
+      route = '/signin';
+    } else if (sessionState == SessionValidationResult.accountDisabled) {
+      await SessionManager.instance.ensureForcedLogout(
+        reason: 'accountDisabled',
+      );
+      route = '/account_blocked';
+    } else {
+      // Keep signed-in fixers moving when validation is inconclusive due to connectivity.
       route = '/home';
     }
 

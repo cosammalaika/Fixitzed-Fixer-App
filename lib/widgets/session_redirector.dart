@@ -41,8 +41,11 @@ class _SessionRedirectorState extends State<SessionRedirector> {
       final navigator = Navigator.of(context);
       final route = ModalRoute.of(context);
       final currentName = route?.settings.name ?? '';
-      if (currentName == '/signin') return;
-      navigator.pushNamedAndRemoveUntil('/signin', (route) => false);
+      final target = reason == 'accountdisabled'
+          ? '/account_blocked'
+          : '/signin';
+      if (currentName == target) return;
+      navigator.pushNamedAndRemoveUntil(target, (route) => false);
     });
   }
 

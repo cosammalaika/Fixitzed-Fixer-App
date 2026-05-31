@@ -29,6 +29,9 @@ class AuthService {
       '/api/login',
       body: {'identifier': identifier, 'password': password},
     );
+    if (res.statusCode == 423) {
+      return const LoginResult(success: false, inactive: true);
+    }
     if (res.statusCode != 200) {
       return const LoginResult(success: false);
     }
