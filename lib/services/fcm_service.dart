@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:io';
 
@@ -10,20 +11,17 @@ import 'package:fixitzed_fixer_app/services/api_client.dart';
 import 'package:fixitzed_fixer_app/state/app_sync.dart';
 import 'package:http/http.dart' as http;
 
-Future<void> fcmBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await LocalNotificationService.instance.init();
-  final notification = message.notification;
-  final title = notification?.title ?? message.data['title'];
-  final body = notification?.body ?? message.data['body'];
-  final payload = FcmService.instance.payloadFromMessage(message);
-  if (title != null || body != null) {
-    await LocalNotificationService.instance.showInstant(
-      title: title ?? 'New notification',
-      body: body ?? '',
-      payload: payload,
-    );
+Future<void> _ensureFirebaseInitialized() async {
+  if (Firebase.apps.isNotEmpty) {
+    return;
   }
+
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+}
+
+@pragma('vm:entry-point')
+Future<void> fcmBackgroundHandler(RemoteMessage message) async {
+  await _ensureFirebaseInitialized();
 }
 
 class FcmService {
@@ -36,17 +34,19 @@ class FcmService {
   Future<void> init() async {
     if (_initialized) return;
     try {
-      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      await _ensureFirebaseInitialized();
     } catch (e) {
       if (kDebugMode) print('Firebase init failed: $e');
       return;
     }
 
-    await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
+    await FirebaseMessaging.instance.setAutoInitEnabled(true);
+    await FirebaseMessaging.instance
+        .setForegroundNotificationPresentationOptions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
     FirebaseMessaging.onBackgroundMessage(fcmBackgroundHandler);
 
     final settings = await FirebaseMessaging.instance.requestPermission(
@@ -66,7 +66,9 @@ class FcmService {
 
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
       _emitRealtimeSyncHints(message);
-      LocalNotificationService.instance.handlePayload(payloadFromMessage(message));
+      LocalNotificationService.instance.handlePayload(
+        payloadFromMessage(message),
+      );
     });
 
     FirebaseMessaging.onMessage.listen((message) {
@@ -75,7 +77,8 @@ class FcmService {
       final body = notification?.body ?? message.data['body'];
       final payload = payloadFromMessage(message);
       _emitRealtimeSyncHints(message);
-      if (title != null || body != null) {
+      final shouldShowLocal = Platform.isAndroid || notification == null;
+      if (shouldShowLocal && (title != null || body != null)) {
         LocalNotificationService.instance.showInstant(
           title: title ?? 'New notification',
           body: body ?? '',
@@ -139,10 +142,10 @@ class FcmService {
     }
 
     for (final topic in topics) {
-      sync.emit(topic, payload: {
-        'source': 'fcm',
-        'message_id': message.messageId,
-      });
+      sync.emit(
+        topic,
+        payload: {'source': 'fcm', 'message_id': message.messageId},
+      );
     }
   }
 
@@ -174,11 +177,15 @@ class FcmService {
     try {
       // Use authenticated ApiClient; fallback to direct HTTP if needed.
       try {
-        await ApiClient.I.post('/api/device-tokens', body: {
-          'token': token,
-          'app': appType,
-          'platform': Platform.isIOS ? 'ios' : 'android',
-        });
+        await ApiClient.I.post(
+          '/api/device-token',
+          body: {
+            'token': token,
+            'app': appType,
+            'app_type': appType,
+            'platform': Platform.isIOS ? 'ios' : 'android',
+          },
+        );
         return;
       } catch (_) {
         // Fallback direct call with stored token if available
@@ -187,7 +194,7 @@ class FcmService {
       final client = ApiClient.I;
       final prefsToken = await client.getToken();
       if (prefsToken == null || prefsToken.isEmpty) return;
-      final uri = Uri.parse('${client.baseUrl}/api/device-tokens');
+      final uri = Uri.parse('${client.baseUrl}/api/device-token');
       final res = await http.post(
         uri,
         headers: {
@@ -195,7 +202,12 @@ class FcmService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $prefsToken',
         },
-        body: '{"token":"$token","platform":"${Platform.isIOS ? 'ios' : 'android'}","app":"$appType"}',
+        body: jsonEncode({
+          'token': token,
+          'platform': Platform.isIOS ? 'ios' : 'android',
+          'app': appType,
+          'app_type': appType,
+        }),
       );
       if (res.statusCode >= 200 && res.statusCode < 300) {
         if (kDebugMode) print('FCM token persisted (${res.statusCode})');
@@ -226,7 +238,7 @@ class FcmService {
       if (auth == null || auth.isEmpty) return;
       final token = await FirebaseMessaging.instance.getToken();
       if (token == null || token.isEmpty) return;
-      final uri = Uri.parse('${client.baseUrl}/api/device-tokens');
+      final uri = Uri.parse('${client.baseUrl}/api/device-token');
       await http.delete(
         uri,
         headers: {
@@ -234,7 +246,7 @@ class FcmService {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $auth',
         },
-        body: '{"token":"$token"}',
+        body: jsonEncode({'token': token}),
       );
     } catch (e) {
       if (kDebugMode) log('unregisterTokenForCurrentUser failed: $e');
